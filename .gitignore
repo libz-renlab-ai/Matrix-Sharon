@@ -1,0 +1,21 @@
+# Runtime / local state (not part of the project)
+.viki/
+.claude/
+.teamagent/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Node (placeholder for future packages)
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
