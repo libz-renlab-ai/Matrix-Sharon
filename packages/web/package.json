@@ -1,0 +1,19 @@
+{
+  "name": "@matrix-sharon/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "astro check",
+    "test": "echo 'web has no tests yet — Phase 3+ adds Playwright' && exit 0",
+    "build": "astro build",
+    "dev": "astro dev"
+  },
+  "dependencies": {
+    "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "typescript": "^5.6.3"
+  }
+}
