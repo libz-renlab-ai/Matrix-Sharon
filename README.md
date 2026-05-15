@@ -10,11 +10,35 @@
 
 ## 当前状态
 
-🚧 仓库刚启动。已有：
+🎯 **Phase 1 scaffold 已完成。** 仓库已是可构建的 pnpm monorepo，CI 绿，DB 迁移可应用。
 
 - ✅ [前端原型](./prototype/index.html) —— 全部主流程的可点击 demo（单 HTML 文件，零依赖）
-- ⏳ 设计文档（待写）
-- ⏳ 后端 / CLI / Astro 站点（待造）
+- ✅ [设计文档](./docs/superpowers/specs/2026-05-15-matrix-sharon-design.md) —— v1 spec
+- ✅ [Phase 1 实现计划](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-1-scaffold.md) —— 已执行完
+- ✅ 7 个 package 骨架（types/ports/core/adapters/server/web/cli）
+- ✅ SQLite 10 张表初始迁移
+- ✅ CI 绿（pnpm typecheck + test）
+- ⏳ Phase 2: GitHub OAuth + session（实现计划待写）
+- ⏳ Phase 3: 浏览/详情 REST 端点 + Astro 页面接入
+- ⏳ Phase 4: 候选 / 提交 / 审批
+- ⏳ Phase 5: 安装 + 卸载（CLI + Web 一键）
+- ⏳ Phase 6: Leader 推送 + 接收侧 dispatcher
+
+## 开发
+
+```bash
+# 一次性
+pnpm install
+
+# 全部包：类型检查 + 测试
+pnpm typecheck
+pnpm test
+
+# 单独跑某一包
+pnpm --filter @matrix-sharon/adapters test
+pnpm --filter @matrix-sharon/server dev   # 启 server，端口 4321
+pnpm --filter @matrix-sharon/web dev      # 启 web，端口 4322（代理 /v1 到 4321）
+```
 
 ## 先看原型
 
