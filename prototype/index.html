@@ -946,7 +946,7 @@
   }
   .push-reason-input:focus { outline: none; border-color: var(--primary); }
 
-  /* ========== Forced Install Markers ========== */
+  /* ========== Push Markers ========== */
   .forced-badge {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 10px;
@@ -958,6 +958,71 @@
     letter-spacing: 0.3px;
     margin-left: 6px;
     vertical-align: middle;
+  }
+  .kind-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--fg-muted);
+    letter-spacing: 0.3px;
+    border: 1px solid var(--border);
+  }
+  .kind-tag.skill { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .kind-tag.rule  { background: var(--primary-soft); color: var(--primary); border-color: transparent; }
+  .kind-tag.flow  { background: var(--warning-soft); color: var(--warning); border-color: transparent; }
+  .kind-row {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+  .kind-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--fg-muted);
+    cursor: not-allowed;
+    position: relative;
+  }
+  .kind-pill.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    cursor: default;
+    font-weight: 600;
+  }
+  .kind-pill.future::after {
+    content: "v1.x";
+    position: absolute;
+    top: -6px; right: -6px;
+    font-size: 9px;
+    background: var(--fg-faint);
+    color: #fff;
+    padding: 0 5px;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .integration-hint {
+    background: var(--surface-2);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--fg-muted);
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+  .integration-hint code {
+    background: var(--surface);
+    color: var(--primary);
   }
   .inbox-banner {
     background: linear-gradient(90deg, #ecebff 0%, #f5f0ff 100%);
@@ -1201,8 +1266,9 @@
 
     <div class="tab-panel" id="tab-inbox">
       <p style="font-size:13px;color:var(--fg-muted);margin:0 0 16px;">
-        Leader 推送给你的 skill 已经<b>自动安装</b>到本地 <code>~/.claude/skills/</code>。
-        这些 skill 不能由你卸载，只能由 leader 撤回。可以点"我已了解"清理通知。
+        Leader 推送给你的资源已经<b>自动安装</b>到本地。如果你不需要，可以在「我已安装」tab 里正常卸载。
+        Leader 能看到团队的<b>留存率</b>（保留 / 卸载）作为团队信号，但不会强制保留。
+        点"我已了解"清理通知。
       </p>
       <div id="inbox-list"><!-- filled by JS --></div>
     </div>
@@ -1342,8 +1408,16 @@
 <!-- ========== Push Dialog (Leader) ========== -->
 <div class="dialog-bg" id="push-dialog">
   <div class="dialog wide">
-    <h3 class="with-meta">📤 推送 skill 到成员</h3>
-    <p class="dialog-meta" id="push-skill-meta">将 <b id="push-skill-name">skill</b> 强制推送给以下成员。</p>
+    <h3 class="with-meta">📤 推送到成员</h3>
+    <p class="dialog-meta" id="push-skill-meta">将 <b id="push-skill-name">资源</b> 推送给以下成员。接收方自动安装，可自行卸载，你能看到留存率。</p>
+
+    <div class="dialog-section">
+      <div class="label">推送类型</div>
+      <div class="kind-row" id="kind-row"><!-- filled by JS --></div>
+      <div class="integration-hint" id="kind-hint">
+        <code>kind=skill</code> → 写入 <code>~/.claude/skills/&lt;name&gt;/</code>
+      </div>
+    </div>
 
     <div class="dialog-section">
       <div class="label">选择成员</div>
@@ -1353,15 +1427,15 @@
 
     <div class="dialog-section">
       <div class="label">推送理由（成员会看到）</div>
-      <textarea class="push-reason-input" id="push-reason" placeholder="例：本月数据库事故频发，全员必装。下不为例。"></textarea>
+      <textarea class="push-reason-input" id="push-reason" placeholder="例：本月数据库事故频发，全员强烈建议装。"></textarea>
     </div>
 
-    <div class="dialog-section" style="background:var(--warning-soft);border:1px solid #ffe6c2;border-radius:8px;padding:12px 14px;font-size:13px;color:#8a5a00;">
-      <b>⚠️ 强制推送会发生这些事：</b>
+    <div class="dialog-section" style="background:var(--accent-soft);border:1px solid #b8e8d8;border-radius:8px;padding:12px 14px;font-size:13px;color:#006e54;">
+      <b>📌 这次推送会发生这些事：</b>
       <ul style="margin:6px 0 0 18px;padding:0;">
-        <li>所选成员的本地 sharon CLI 立即拉取并安装这个 skill</li>
-        <li>成员的"个人中心 · Leader 推送"会出现这条记录</li>
-        <li>该 skill 在成员侧无法被卸载，只能由 leader 撤回</li>
+        <li>所选成员的本地 sharon CLI 立即拉取并自动安装</li>
+        <li>成员的"个人中心 · Leader 推送"出现这条记录</li>
+        <li>成员可以自行卸载——你能看到留存率（保留 / 卸载）作为团队信号</li>
         <li>本次推送记入审计日志（你的名字、时间、理由）</li>
       </ul>
     </div>
@@ -1921,19 +1995,21 @@ const MEMBERS = [
   { id: "zhang-yifan",  name: "张一帆", initial: "张", role: "leader", online: false, lastSeen: "昨天" },
 ];
 
-/* The current user's "Leader 推送" inbox — items leader has forced-pushed to this user.
-   The `installed` state is already auto-true (force = auto-install).
-   `acknowledged` = user clicked "我已了解"; not required, but clears the inbox banner. */
+/* The current user's "Leader 推送" inbox — items leader has pushed to this user.
+   On push, the resource is auto-installed locally; member CAN uninstall but leader sees the rate.
+   `acknowledged` = user clicked "我已了解"; clears the inbox banner. */
 const INBOX = [
   {
+    kind: "skill",
     slug: "sql-safety-gate",
     version: "v2",
     fromLeader: "陈雪 (Leader)",
-    reason: "本月数据库事故频发：上周有人误删一次 user_sessions、前天又一次 TRUNCATE 测试库。Sharon 已经能在 PreToolUse 阶段拦下来，全员必装，下不为例。",
+    reason: "本月数据库事故频发：上周有人误删一次 user_sessions、前天又一次 TRUNCATE 测试库。Sharon 已经能在 PreToolUse 阶段拦下来，全员强烈建议装。",
     pushedAt: "2 小时前",
     acknowledged: false,
   },
   {
+    kind: "skill",
     slug: "code-review-checklist",
     version: "v3",
     fromLeader: "陈雪 (Leader)",
@@ -1942,6 +2018,61 @@ const INBOX = [
     acknowledged: true,
   },
 ];
+
+/* ============================================================
+   PUSH_KINDS — registry of resource types that can be pushed
+   leader→member. Architectural extension point: adding a new kind
+   means adding an entry here + an adapter that knows how to deliver
+   that kind's payload to the receiver's local environment.
+
+   v1.0 ships only `skill`. Future kinds are listed disabled in the
+   push dialog so users see the roadmap without being able to use
+   them yet.
+
+   Integration boundary with Viki:
+     - kind "viki-rule" maps to a Viki rule pack (one or more rules
+       from a Viki rule bundle)
+     - delivery path: Sharon push API hands {kind, payload, target}
+       to the receiver's local agent; local agent dispatches by kind:
+         * kind=skill     → write to ~/.claude/skills/<name>/
+         * kind=viki-rule → call viki CLI: viki import-rules <bundle>
+         * kind=workflow  → write to ~/.claude/workflows/<name>/
+     - Sharon does not need to understand Viki internals; it just
+       carries the bundle and hands it to the receiver-side dispatcher.
+   ============================================================ */
+const PUSH_KINDS = {
+  skill: {
+    label: "Skill",
+    icon: "🧩",
+    available: true,
+    desc: "Claude Code 原生 skill 目录",
+    handlerHint: "→ 写入 ~/.claude/skills/<name>/",
+  },
+  "viki-rule": {
+    label: "Viki 规则",
+    icon: "📐",
+    available: false,
+    eta: "v1.1",
+    desc: "Viki 学习引擎抽出的规则包",
+    handlerHint: "→ 调 viki import-rules <bundle>（待 Viki 项目对接）",
+  },
+  workflow: {
+    label: "Workflow",
+    icon: "🔗",
+    available: false,
+    eta: "v1.2",
+    desc: "多步 skill 串联的 workflow 定义",
+    handlerHint: "→ 写入 ~/.claude/workflows/<name>/",
+  },
+  "prompt-template": {
+    label: "Prompt 模板",
+    icon: "💬",
+    available: false,
+    eta: "v1.3",
+    desc: "可重用的 prompt 模板（带参数占位）",
+    handlerHint: "→ 写入 ~/.claude/prompts/<name>.md",
+  },
+};
 
 /* ============================================================
    Router
@@ -2167,8 +2298,8 @@ function renderDetail(slug) {
           <div class="install-cmd"><span class="prompt">$</span>sharon install ${s.slug}@${s.version}</div>
           <div style="font-size:11px;color:var(--fg-faint);margin-top:8px;">需要本地 sharon CLI ≥ 0.1.0</div>
           <div class="push-launcher leader-only-block">
-            <button class="btn big" style="background:#1d2433;color:#fff;border-color:#1d2433;" onclick="openPushDialog('${s.slug}')">📤 推送给成员（强制安装）</button>
-            <div style="font-size:11px;color:var(--fg-faint);margin-top:8px;text-align:center;">仅 leader 可见 · 接收方自动安装且无法卸载</div>
+            <button class="btn big" style="background:#1d2433;color:#fff;border-color:#1d2433;" onclick="openPushDialog('${s.slug}')">📤 推送给成员</button>
+            <div style="font-size:11px;color:var(--fg-faint);margin-top:8px;text-align:center;">仅 leader 可见 · 自动安装 · 成员可自行卸载（留存率你看得到）</div>
           </div>
         </div>
         <div class="side-card">
@@ -2258,23 +2389,29 @@ function renderMe() {
   document.getElementById("inbox-count").style.color = unack > 0 ? "#fff" : "var(--fg-muted)";
 
   if (INBOX.length === 0) {
-    inboxList.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Leader 还没推送过 skill 给你</p><p class="hint">如果有，会自动安装并出现在这里</p></div>`;
+    inboxList.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Leader 还没推送过资源给你</p><p class="hint">如果有，会自动安装并出现在这里</p></div>`;
   } else {
     inboxList.innerHTML = INBOX.map((item, idx) => {
-      const skill = SKILLS.find(s => s.slug === item.slug);
+      const kindDef = PUSH_KINDS[item.kind] || PUSH_KINDS.skill;
+      const skill = item.kind === "skill" ? SKILLS.find(s => s.slug === item.slug) : null;
+      const installPath = item.kind === "skill" ? `~/.claude/skills/${item.slug}/`
+                        : item.kind === "viki-rule" ? `viki 规则库`
+                        : item.kind === "workflow"  ? `~/.claude/workflows/${item.slug}/`
+                        : `~/.claude/prompts/${item.slug}.md`;
       return `
         <div class="inbox-item">
           <div class="ii-head">
             <div style="flex:1;min-width:0;">
               <h3>
-                <span class="skill-icon cat-${skill ? skill.category : 'safety'}" style="width:26px;height:26px;font-size:14px;border-radius:6px;">${skill ? skill.icon : '🔒'}</span>
+                <span class="skill-icon ${skill ? 'cat-' + skill.category : ''}" style="width:26px;height:26px;font-size:14px;border-radius:6px;background:${skill ? '' : 'var(--primary-soft)'};">${skill ? skill.icon : kindDef.icon}</span>
                 ${item.slug} <span style="color:var(--fg-muted);font-weight:400;font-size:13px;">${item.version}</span>
-                <span class="forced-badge">🔒 必装</span>
+                <span class="kind-tag ${item.kind === 'skill' ? 'skill' : item.kind === 'viki-rule' ? 'rule' : 'flow'}">${kindDef.icon} ${kindDef.label}</span>
+                <span class="forced-badge">📌 Leader 推送</span>
               </h3>
-              <div class="ii-meta">来自 <b>${item.fromLeader}</b> · ${item.pushedAt} · 已自动安装到 <code>~/.claude/skills/${item.slug}/</code></div>
+              <div class="ii-meta">来自 <b>${item.fromLeader}</b> · ${item.pushedAt} · 已自动安装到 <code>${installPath}</code></div>
             </div>
             <div class="ii-actions">
-              <button class="btn small" onclick="goto('skill/${item.slug}')">查看 skill</button>
+              ${item.kind === 'skill' ? `<button class="btn small" onclick="goto('skill/${item.slug}')">查看</button>` : ''}
               ${item.acknowledged
                 ? `<button class="btn small" disabled style="opacity:0.5;">✓ 已了解</button>`
                 : `<button class="btn primary small" onclick="ackInbox(${idx})">我已了解</button>`}
@@ -2300,13 +2437,13 @@ function renderMe() {
       </div>
     </div>`).join("");
 
-  // installed (with forced badge support)
-  document.getElementById("installed-list").innerHTML = INSTALLED.map(i => `
+  // installed (with leader-push badge informational only; uninstall is always allowed)
+  document.getElementById("installed-list").innerHTML = INSTALLED.map((i, idx) => `
     <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:16px;${i.forced ? "border-left:4px solid var(--primary);padding-left:16px;" : ""}">
       <div style="flex:1;min-width:0;">
         <div style="font-weight:600;font-size:15px;">
           ${i.slug}
-          ${i.forced ? `<span class="forced-badge">🔒 Leader 推送</span>` : ""}
+          ${i.forced ? `<span class="forced-badge">📌 Leader 推送</span>` : ""}
         </div>
         <div style="font-size:13px;color:var(--fg-muted);margin-top:4px;">
           ${i.version} · ${i.installedAt}安装 · <code>~/.claude/skills/${i.slug}/</code>
@@ -2315,11 +2452,34 @@ function renderMe() {
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0;">
         <button class="btn small" onclick="goto('skill/${i.slug}')">查看</button>
-        ${i.forced
-          ? `<button class="btn small" disabled title="leader 推送的 skill 不能由你卸载" style="opacity:0.6;">🔒 不可卸载</button>`
-          : `<button class="btn small">检查更新</button>`}
+        <button class="btn small">检查更新</button>
+        <button class="btn small danger" onclick="uninstallSkill(${idx})">卸载</button>
       </div>
     </div>`).join("");
+}
+
+function uninstallSkill(idx) {
+  const i = INSTALLED[idx];
+  if (!i) return;
+  let msg;
+  if (i.forced) {
+    msg = `要卸载 ${i.slug} 吗？\n\n这是 ${i.forcedBy} 推送的 skill。卸载后 leader 会在自己的"推送留存率"里看到 -1（用于团队信号），但他不会被打扰，你也不会被找。\n\n继续？`;
+  } else {
+    msg = `要卸载 ${i.slug} 吗？此 skill 将从本地 ~/.claude/skills/ 移除。`;
+  }
+  if (!confirm(msg)) return;
+  const wasForced = i.forced;
+  const slug = i.slug;
+  INSTALLED.splice(idx, 1);
+  // also clear from INBOX if present
+  if (wasForced) {
+    const ibIdx = INBOX.findIndex(x => x.slug === slug);
+    if (ibIdx >= 0) INBOX.splice(ibIdx, 1);
+  }
+  renderMe();
+  toast(wasForced
+    ? `已卸载 ${slug}。leader 的"推送留存率"已更新。`
+    : `已卸载 ${slug}。`);
 }
 
 function ackInbox(idx) {
@@ -2468,19 +2628,34 @@ function toast(msg) {
 }
 
 /* ============= Push Dialog (Leader) ============= */
-let _pushState = { slug: null, selected: new Set() };
+let _pushState = { slug: null, kind: "skill", selected: new Set() };
 
 function openPushDialog(slug) {
   const s = SKILLS.find(x => x.slug === slug);
   if (!s) return;
   _pushState.slug = slug;
+  _pushState.kind = "skill";   // v1 only kind available
   _pushState.selected = new Set();
   document.getElementById("push-skill-name").textContent = s.name + " @" + s.version;
   document.getElementById("push-reason").value = "";
 
+  // Build kind row (only "skill" enabled in v1, others shown for roadmap visibility)
+  const kindRow = document.getElementById("kind-row");
+  kindRow.innerHTML = Object.entries(PUSH_KINDS).map(([k, def]) => `
+    <span class="kind-pill ${def.available ? 'active' : 'future'}" title="${def.desc}${def.eta ? ' · ' + def.eta : ''}">
+      <span style="font-size:14px;">${def.icon}</span>
+      ${def.label}
+    </span>
+  `).join("");
+  // hint shows the active kind's handler info
+  const activeKind = PUSH_KINDS[_pushState.kind];
+  document.getElementById("kind-hint").innerHTML = `
+    <code>kind=${_pushState.kind}</code> ${activeKind.handlerHint}
+    <br><span style="color:var(--fg-faint);">未来推送类型已留接口（<code>PUSH_KINDS</code> 注册表）：Viki 规则、workflow、prompt 模板。Sharon 不需要懂各类型内部，只负责"把 bundle 送到接收方本地 dispatcher"。</span>
+  `;
+
   // Build member list (exclude leaders + self, mark already-installed)
   const list = document.getElementById("member-pick-list");
-  // mock: pretend members who have already installed via FORCED don't need force again
   list.innerHTML = MEMBERS.filter(m => m.role === "member" && !m.isSelf).map(m => {
     const alreadyHas = (m.id === "lin-haoxuan") && INSTALLED.some(i => i.slug === slug);
     return `

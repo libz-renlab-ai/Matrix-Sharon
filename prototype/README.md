@@ -2,6 +2,9 @@
 
 单文件可交付前端原型。打开 `index.html` 即可看，**不需要任何构建/依赖**。
 
+> v1 已实现：leader 推送给成员（成员可自行卸载，leader 看到留存率）
+> · 多资源类型预留架构（v1 仅 skill 可用，Viki 规则 / workflow / prompt 模板路线图可见但 disabled）
+
 ## 怎么看
 
 ```
