@@ -1,0 +1,19 @@
+{
+  "name": "@matrix-sharon/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": { "sharon": "./src/bin.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'cli has no logic yet — Phase 5+ adds tests' && exit 0",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@matrix-sharon/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  }
+}

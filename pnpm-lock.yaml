@@ -37,6 +37,19 @@ importers:
         specifier: ^2.1.5
         version: 2.1.9(@types/node@22.19.19)
 
+  packages/cli:
+    dependencies:
+      '@matrix-sharon/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@types/node':
+        specifier: ^22.9.0
+        version: 22.19.19
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/core:
     dependencies:
       '@matrix-sharon/ports':
