@@ -1,0 +1,22 @@
+{
+  "name": "@matrix-sharon/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'core has no logic yet — Phase 4+ adds tests' && exit 0",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@matrix-sharon/types": "workspace:*",
+    "@matrix-sharon/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}
