@@ -102,6 +102,12 @@
   .nav a.active { background: var(--primary-soft); color: var(--primary); }
   .nav a.leader-only { display: none; }
   body[data-role="leader"] .nav a.leader-only { display: inline-block; }
+  .leader-only-block { display: none; }
+  body[data-role="leader"] .leader-only-block { display: block; }
+  .member-only-block { display: block; }
+  body[data-role="leader"] .member-only-block { display: none; }
+  body[data-role="leader"] #me-tabs .tab[data-tab="inbox"] { display: none; }
+  body[data-role="leader"] #tab-inbox { display: none !important; }
 
   .topbar-right {
     display: flex; align-items: center; gap: 10px;
@@ -714,6 +720,322 @@
     to { opacity: 1; transform: none; }
   }
 
+  /* ========== Value Prop on Card ========== */
+  .skill-card .head {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 4px;
+  }
+  .skill-icon {
+    width: 36px; height: 36px; flex-shrink: 0;
+    border-radius: 9px;
+    display: grid; place-items: center;
+    font-size: 18px;
+    background: var(--surface-2);
+  }
+  .skill-icon.cat-safety   { background: #fde4e4; }
+  .skill-icon.cat-review   { background: #ecebff; }
+  .skill-icon.cat-debug    { background: #fff2db; }
+  .skill-icon.cat-write    { background: #e6f5ff; }
+  .skill-icon.cat-perf     { background: #d8f5ec; }
+  .skill-icon.cat-test     { background: #fde9c8; }
+  .skill-icon.cat-i18n     { background: #f0e6ff; }
+  .skill-icon.cat-git      { background: #ffe9d8; }
+  .skill-card .title-area { flex: 1; min-width: 0; }
+  .skill-card .name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fg);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 0;
+  }
+  .skill-card .name .slug { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .value-prop {
+    margin: 6px 0 10px;
+    display: grid;
+    gap: 6px;
+  }
+  .value-line {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .value-line .vl-label {
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-align: right;
+    background: var(--primary-soft);
+    border-radius: 4px;
+    padding: 1px 6px;
+    line-height: 1.6;
+    justify-self: end;
+    align-self: start;
+    margin-top: 1px;
+  }
+  .value-line .vl-label.gain  { color: var(--accent);  background: var(--accent-soft); }
+  .value-line .vl-label.pain  { color: var(--danger);  background: var(--danger-soft); }
+  .value-line .vl-label.trig  { color: var(--warning); background: var(--warning-soft); }
+  .value-line .vl-text { color: var(--fg); }
+  .value-line .vl-text.muted { color: var(--fg-muted); }
+
+  /* ========== Value Prop on Detail Page ========== */
+  .value-prop-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 26px;
+    margin-bottom: 20px;
+  }
+  .value-prop-detail h3 {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .vpd-row {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 14px;
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  .vpd-row:first-of-type { border-top: none; padding-top: 0; }
+  .vpd-row .vpd-icon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 16px;
+  }
+  .vpd-row.pain .vpd-icon   { background: var(--danger-soft); }
+  .vpd-row.gain .vpd-icon   { background: var(--accent-soft); }
+  .vpd-row.trig .vpd-icon   { background: var(--warning-soft); }
+  .vpd-row.example .vpd-icon { background: var(--primary-soft); }
+  .vpd-row .vpd-body { padding-top: 4px; }
+  .vpd-row .vpd-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--fg);
+    margin: 0 0 4px;
+  }
+  .vpd-row .vpd-text {
+    color: var(--fg-muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .example-box {
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .example-row {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    font-family: var(--mono);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .example-row:first-child { border-top: none; }
+  .example-row .er-label {
+    background: var(--surface-2);
+    padding: 10px 12px;
+    color: var(--fg-muted);
+    font-weight: 600;
+    border-right: 1px solid var(--border);
+    text-align: right;
+  }
+  .example-row .er-content {
+    padding: 10px 14px;
+    color: var(--fg);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .example-row.user .er-label    { color: var(--primary); }
+  .example-row.sharon .er-label  { color: var(--accent); }
+  .example-row.sharon .er-content { background: var(--accent-soft); color: #006e54; }
+  .example-row.deny .er-content   { background: var(--danger-soft); color: #8a2929; }
+
+  /* ========== Leader Push ========== */
+  .push-launcher {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .push-launcher .btn { width: 100%; justify-content: center; }
+  .push-banner-row {
+    background: linear-gradient(90deg, #ecebff 0%, #f5f0ff 100%);
+    border: 1px solid #d8d5ff;
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #3a36a8;
+    display: flex; align-items: center; gap: 10px;
+    justify-content: space-between;
+  }
+  .member-pick-list {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+  }
+  .member-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .member-row:last-child { border-bottom: none; }
+  .member-row:hover { background: var(--surface-2); }
+  .member-row.selected { background: var(--primary-soft); }
+  .member-row input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--primary);
+  }
+  .member-row .m-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #93c5fd, #6366f1);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: grid; place-items: center;
+  }
+  .member-row .m-info { flex: 1; min-width: 0; }
+  .member-row .m-name { font-weight: 500; font-size: 14px; }
+  .member-row .m-status { font-size: 11px; color: var(--fg-faint); }
+  .member-row .m-status .dot-online {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); margin-right: 4px; vertical-align: middle;
+  }
+  .member-row .m-status .dot-offline {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--fg-faint); margin-right: 4px; vertical-align: middle;
+  }
+  .member-row .m-installed-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .push-reason-input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--fg);
+    background: var(--surface);
+    resize: vertical;
+    min-height: 60px;
+    margin-top: 8px;
+  }
+  .push-reason-input:focus { outline: none; border-color: var(--primary); }
+
+  /* ========== Forced Install Markers ========== */
+  .forced-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    letter-spacing: 0.3px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .inbox-banner {
+    background: linear-gradient(90deg, #ecebff 0%, #f5f0ff 100%);
+    border: 1px solid #d8d5ff;
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #3a36a8;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .inbox-banner .pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 0 0 rgba(91, 91, 214, 0.6);
+    animation: pulse 1.5s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0   rgba(91, 91, 214, 0.6); }
+    70%  { box-shadow: 0 0 0 10px rgba(91, 91, 214, 0); }
+    100% { box-shadow: 0 0 0 0   rgba(91, 91, 214, 0); }
+  }
+  .inbox-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin-bottom: 12px;
+  }
+  .inbox-item .ii-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 16px; margin-bottom: 10px;
+  }
+  .inbox-item h3 {
+    margin: 0;
+    font-size: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .inbox-item .ii-meta {
+    font-size: 12px; color: var(--fg-muted);
+    margin: 4px 0 0;
+  }
+  .inbox-item .ii-reason {
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--fg);
+    border-left: 3px solid var(--primary);
+    margin-bottom: 12px;
+  }
+  .inbox-item .ii-actions {
+    display: flex; gap: 8px;
+  }
+
+  /* Big modal */
+  .dialog.wide { max-width: 600px; }
+  .dialog h3.with-meta { margin-bottom: 2px; }
+  .dialog .dialog-meta {
+    color: var(--fg-muted); font-size: 13px; margin: 0 0 18px;
+  }
+  .dialog-section { margin-bottom: 16px; }
+  .dialog-section .label {
+    font-size: 12px; font-weight: 600; color: var(--fg-muted);
+    text-transform: uppercase; letter-spacing: 0.4px;
+    margin-bottom: 6px;
+  }
+  .pick-summary {
+    font-size: 13px;
+    color: var(--fg-muted);
+    margin-top: 8px;
+  }
+  .pick-summary .num {
+    font-weight: 700; color: var(--primary);
+  }
+
   /* ========== Install dialog ========== */
   .dialog-bg {
     position: fixed; inset: 0;
@@ -860,8 +1182,11 @@
     <h1 class="h1">个人中心</h1>
     <p class="subtitle">本地 scanner 检测到的变更、你已发布的 skill、你已安装的 skill。</p>
 
+    <div id="inbox-banner-host"><!-- filled by JS: leader-push banner if any unacknowledged --></div>
+
     <div class="tabs" id="me-tabs">
       <button class="tab active" data-tab="candidates">待我决定 <span class="badge" id="candidates-count">3</span></button>
+      <button class="tab" data-tab="inbox">Leader 推送 <span class="badge" id="inbox-count" style="background:var(--primary);color:#fff;">0</span></button>
       <button class="tab" data-tab="published">我发布的</button>
       <button class="tab" data-tab="installed">我已安装</button>
     </div>
@@ -872,6 +1197,14 @@
         你勾"发布候选"后，它们会进 leader 审批队列。不勾的 skill 永远不离开你电脑。
       </p>
       <div id="candidates-list"><!-- filled by JS --></div>
+    </div>
+
+    <div class="tab-panel" id="tab-inbox">
+      <p style="font-size:13px;color:var(--fg-muted);margin:0 0 16px;">
+        Leader 推送给你的 skill 已经<b>自动安装</b>到本地 <code>~/.claude/skills/</code>。
+        这些 skill 不能由你卸载，只能由 leader 撤回。可以点"我已了解"清理通知。
+      </p>
+      <div id="inbox-list"><!-- filled by JS --></div>
     </div>
 
     <div class="tab-panel" id="tab-published">
@@ -1006,6 +1339,40 @@
 <!-- ========== Toast ========== -->
 <div class="toast" id="toast"></div>
 
+<!-- ========== Push Dialog (Leader) ========== -->
+<div class="dialog-bg" id="push-dialog">
+  <div class="dialog wide">
+    <h3 class="with-meta">📤 推送 skill 到成员</h3>
+    <p class="dialog-meta" id="push-skill-meta">将 <b id="push-skill-name">skill</b> 强制推送给以下成员。</p>
+
+    <div class="dialog-section">
+      <div class="label">选择成员</div>
+      <div class="member-pick-list" id="member-pick-list"><!-- filled by JS --></div>
+      <div class="pick-summary">已选 <span class="num" id="pick-count">0</span> 人</div>
+    </div>
+
+    <div class="dialog-section">
+      <div class="label">推送理由（成员会看到）</div>
+      <textarea class="push-reason-input" id="push-reason" placeholder="例：本月数据库事故频发，全员必装。下不为例。"></textarea>
+    </div>
+
+    <div class="dialog-section" style="background:var(--warning-soft);border:1px solid #ffe6c2;border-radius:8px;padding:12px 14px;font-size:13px;color:#8a5a00;">
+      <b>⚠️ 强制推送会发生这些事：</b>
+      <ul style="margin:6px 0 0 18px;padding:0;">
+        <li>所选成员的本地 sharon CLI 立即拉取并安装这个 skill</li>
+        <li>成员的"个人中心 · Leader 推送"会出现这条记录</li>
+        <li>该 skill 在成员侧无法被卸载，只能由 leader 撤回</li>
+        <li>本次推送记入审计日志（你的名字、时间、理由）</li>
+      </ul>
+    </div>
+
+    <div class="dialog-actions">
+      <button class="btn ghost" onclick="closePushDialog()">取消</button>
+      <button class="btn primary" id="push-confirm-btn" onclick="confirmPush()" disabled>推送给 <span id="push-confirm-num">0</span> 人</button>
+    </div>
+  </div>
+</div>
+
 <!-- ========== Install Dialog ========== -->
 <div class="dialog-bg" id="install-dialog">
   <div class="dialog">
@@ -1032,7 +1399,16 @@ const SKILLS = [
   {
     slug: "code-review-checklist",
     name: "code-review-checklist",
-    desc: "PR 落地前自动跑一遍 SQL 安全、LLM 信任边界、副作用条件等结构化检查，最后产出可贴评论的 review 摘要。",
+    icon: "🔍",
+    category: "review",
+    pain: "Review 时常常滑过 SQL 注入、LLM 信任边界这种藏得深的问题，落地后回滚痛。",
+    gain: "PR push 前 30 秒跑一遍结构化清单，直接产出可贴评论的 review 摘要。",
+    triggers: "你说「review 这份 diff」/ 准备 git push 前。",
+    example: {
+      user: "review 这个 PR：把用户搜索接到 LLM",
+      sharon: "✓ 已扫 12 个文件\n⚠️ src/api/search.ts:34 — LLM 输出直接拼到 SQL ORDER BY，可能注入\n⚠️ src/api/search.ts:51 — 用户输入未做 prompt injection 防护\n✓ 副作用边界正常\n\n→ 已生成可贴评论摘要"
+    },
+    desc: "PR 落地前自动跑一遍 SQL 安全、LLM 信任边界、副作用条件等结构化检查。",
     author: "陈雪",
     authorInitial: "陈",
     version: "v3",
@@ -1085,7 +1461,16 @@ v3: 加 LLM 信任边界（本次）`
   {
     slug: "sql-safety-gate",
     name: "sql-safety-gate",
-    desc: "在 Claude 准备运行任何 SQL 之前拦下来，强制 EXPLAIN、行数估算、危险关键字检查。误删除表救命级。",
+    icon: "🛡️",
+    category: "safety",
+    pain: "Claude 半夜要跑 DROP TABLE 时人在睡觉，醒来全员回滚到天亮。",
+    gain: "所有破坏性 SQL 进 PreToolUse hook，强制 EXPLAIN + 行数估算 + 二次确认。",
+    triggers: "Claude 准备运行任何含 DROP / TRUNCATE / UPDATE-无-WHERE / DELETE-1=1 的 SQL。",
+    example: {
+      user: "DROP TABLE users;",
+      deny: "❌ 拒绝。这条会影响 23,481 行。\n\n如确认必要，请改写为：\n   /* sharon-allow-destructive: rotation-2026-05 */\n   DROP TABLE users;\n\n或人工二次确认：sharon confirm <token>"
+    },
+    desc: "在 Claude 准备运行任何 SQL 之前拦下来，强制 EXPLAIN、行数估算、危险关键字检查。",
     author: "陈雪",
     authorInitial: "陈",
     version: "v2",
@@ -1128,6 +1513,15 @@ deny_keywords:
   {
     slug: "i18n-keys-extractor",
     name: "i18n-keys-extractor",
+    icon: "🌐",
+    category: "i18n",
+    pain: "硬编码的中英文散在十几个组件里，要英文化时一周做不完，命名还不统一。",
+    gain: "一条命令扫完，自动起 key、写进 locales/、把原位置改成 t('key')。",
+    triggers: "你说「准备做 i18n」或「这页要英文版」。",
+    example: {
+      user: "把 src/pages/Settings.tsx 抽 i18n",
+      sharon: "✓ 找到 14 处硬编码中文\n✓ 已生成 key 名（settings.profile.email_label 等）\n✓ 写入 locales/zh.json + locales/en.json（英文先填占位）\n✓ 原文件中 14 处 → 替换为 t('xxx')\n\n→ 还剩 1 处不确定语境，已标 TODO"
+    },
     desc: "扫描前端代码里硬编码的中英文字符串，自动抽到 i18n 资源文件，给出 key 命名建议。",
     author: "王梓",
     authorInitial: "王",
@@ -1154,6 +1548,15 @@ deny_keywords:
   {
     slug: "debug-with-context",
     name: "debug-with-context",
+    icon: "🐛",
+    category: "debug",
+    pain: "Claude 看到 bug 张口就改，没找到 root cause，「fix」常常掩盖真问题。",
+    gain: "强制四阶段：调查→分析→假设→实施。没验证 root cause 之前禁止写修复。",
+    triggers: "你说「debug 这个 bug」/「为什么这里报错」/「这里坏了」。",
+    example: {
+      user: "debug 这个：登录 5% 用户卡转圈",
+      sharon: "进入调查阶段。先不写代码。\n\n证据：5% 比例 → 不是普遍问题\n时间窗：哪一版本上线后开始？\n→ 我需要先看：错误日志样本、网络面板、affected user 的 user-agent 分布\n\n用户：（你贴日志）\n→ 进入分析阶段：列出至少 2 条互斥假设…"
+    },
     desc: "用 systematic-debugging 流程：先调查、再分析、再假设、最后实施。禁止跳过 root cause。",
     author: "林浩轩",
     authorInitial: "林",
@@ -1203,6 +1606,15 @@ deny_keywords:
   {
     slug: "frontend-design-review",
     name: "frontend-design-review",
+    icon: "🎨",
+    category: "review",
+    pain: "AI 写的页面长得像模板小卖部：emoji 满天飞、间距随机、信息密度低。",
+    gain: "用设计师 checklist 找 AI slop 模式、间距 8px 倍数偏离、慢交互，并直接给出 before/after 改法。",
+    triggers: "你说「这页 review 一下设计」/「看着像 AI 写的」。",
+    example: {
+      user: "review 这个 dashboard 设计",
+      sharon: "审完。3 个 AI slop 信号：\n  · 9 处 emoji（建议保留 2 处）\n  · 「赋能」「闭环」「一键」共 6 处空话\n  · KPI 卡片大小一样 → 没主次\n\n4 个间距偏离 8px 系统：\n  · header padding 13px → 12 或 16\n  · 卡片间距 22px → 24\n\n慢交互 1 处：button hover 无视觉反馈"
+    },
     desc: "走一遍前端设计 review：视觉一致性、间距、信息层级、AI slop 模式、慢交互。",
     author: "苏雨晴",
     authorInitial: "苏",
@@ -1234,6 +1646,15 @@ deny_keywords:
   {
     slug: "git-commit-craftsman",
     name: "git-commit-craftsman",
+    icon: "🗂️",
+    category: "git",
+    pain: "一个 PR 里塞 23 个文件 + 一坨混杂改动，review 的人看不下去，rollback 也回滚不干净。",
+    gain: "自动按主题/层拆 commit，每条按 Conventional Commits 出 subject + body，必要时插入 refactor 准备步骤。",
+    triggers: "你说「帮我提交」/「拆 commit」/「准备 push」。",
+    example: {
+      user: "我改了一坨，帮我拆 commit",
+      sharon: "扫了 23 个文件改动。建议拆成 4 个 commit：\n\n1. refactor(api): extract pagination helper（准备步骤）\n2. feat(search): add fuzzy match\n3. fix(auth): handle expired token in middleware\n4. docs: update README example\n\n要我帮你 stage + 提交吗？"
+    },
     desc: "把一坨改动拆成几个语义清晰的 commit，每个 commit message 都按 Conventional Commits 落到位。",
     author: "李文康",
     authorInitial: "李",
@@ -1264,6 +1685,15 @@ deny_keywords:
   {
     slug: "test-driven-refactor",
     name: "test-driven-refactor",
+    icon: "🧪",
+    category: "test",
+    pain: "重构完发现行为变了，回不去，因为重构前根本没测试覆盖。",
+    gain: "强制重构三步：先写 characterization tests 抓 baseline（全绿）→ 改内部（仍全绿）→ 加新功能/测试。",
+    triggers: "你说「重构这块」/「这函数太长想拆」。",
+    example: {
+      user: "重构这个 1500 行的 OrderProcessor",
+      sharon: "停。先抓 baseline：\n\n步骤 1（你不能跳）：为 process()、validate()、settle() 写 6 条覆盖现有行为的 characterization tests。包含 edge case。运行：全绿。\n\n现在你可以动了。每改一步运行 baseline。绿了再下一步。"
+    },
     desc: "重构前先写覆盖现有行为的测试，再改代码，最后所有原测试和新测试一起绿。",
     author: "周楠",
     authorInitial: "周",
@@ -1290,6 +1720,15 @@ deny_keywords:
   {
     slug: "release-notes-writer",
     name: "release-notes-writer",
+    icon: "📝",
+    category: "write",
+    pain: "上线前 1 小时被 PM 催发版说明，commits 翻 200 条手写来不及，写完技术读者非技术读者都不满意。",
+    gain: "从 commits + closed PR/issue 自动生成两份：技术版（按 feat/fix/perf 分组带 PR 链接）+ 非技术版（3-5 句白话）。",
+    triggers: "你说「写发版说明」/「v0.x 上线说明」/「changelog」。",
+    example: {
+      user: "写下 v0.12 → v0.13 的 release notes",
+      sharon: "技术版：\n  feat:\n    · #234 标签搜索支持模糊匹配 (@王梓)\n    · #241 PR detail 加版本切换\n  fix:\n    · #239 fix 5% 用户登录卡住（token 解析） (@林浩轩)\n\n非技术版：\n  「这一版让你搜 skill 时打错字也能找到，PR 详情可以看每个版本的改动。还修了少数用户登录会卡转圈的问题。」"
+    },
     desc: "从 commits + closed PR/issue 自动写发版说明。一份给开发，一份给非技术读者。",
     author: "苏雨晴",
     authorInitial: "苏",
@@ -1459,9 +1898,49 @@ const PUBLISHED = [
 ];
 
 const INSTALLED = [
-  { slug: "code-review-checklist", version: "v3", installedAt: "1 天前" },
-  { slug: "sql-safety-gate", version: "v2", installedAt: "3 天前" },
-  { slug: "git-commit-craftsman", version: "v3", installedAt: "1 周前" },
+  { slug: "code-review-checklist", version: "v3", installedAt: "1 天前", forced: false },
+  { slug: "sql-safety-gate", version: "v2", installedAt: "3 天前", forced: true, forcedBy: "陈雪 (Leader)", forcedReason: "本月数据库事故频发，全员必装。" },
+  { slug: "git-commit-craftsman", version: "v3", installedAt: "1 周前", forced: false },
+];
+
+/* ============================================================
+   Team Members
+   ============================================================ */
+const MEMBERS = [
+  { id: "chen-xue",     name: "陈雪",   initial: "陈", role: "leader", online: true,  lastSeen: "在线" },
+  { id: "lin-haoxuan",  name: "林浩轩", initial: "林", role: "member", online: true,  lastSeen: "在线", isSelf: true },
+  { id: "wang-zi",      name: "王梓",   initial: "王", role: "member", online: true,  lastSeen: "在线" },
+  { id: "li-wenkang",   name: "李文康", initial: "李", role: "member", online: false, lastSeen: "12 分钟前" },
+  { id: "su-yuqing",    name: "苏雨晴", initial: "苏", role: "member", online: true,  lastSeen: "在线" },
+  { id: "zhou-nan",     name: "周楠",   initial: "周", role: "member", online: false, lastSeen: "1 小时前" },
+  { id: "zhao-mingyue", name: "赵明月", initial: "赵", role: "member", online: false, lastSeen: "3 小时前" },
+  { id: "zheng-yixuan", name: "郑亦轩", initial: "郑", role: "member", online: true,  lastSeen: "在线" },
+  { id: "qian-keyi",    name: "钱可仪", initial: "钱", role: "member", online: false, lastSeen: "昨天" },
+  { id: "sun-jiaxin",   name: "孙佳欣", initial: "孙", role: "member", online: false, lastSeen: "昨天" },
+  { id: "wu-zihao",     name: "吴子豪", initial: "吴", role: "member", online: false, lastSeen: "3 天前" },
+  { id: "zhang-yifan",  name: "张一帆", initial: "张", role: "leader", online: false, lastSeen: "昨天" },
+];
+
+/* The current user's "Leader 推送" inbox — items leader has forced-pushed to this user.
+   The `installed` state is already auto-true (force = auto-install).
+   `acknowledged` = user clicked "我已了解"; not required, but clears the inbox banner. */
+const INBOX = [
+  {
+    slug: "sql-safety-gate",
+    version: "v2",
+    fromLeader: "陈雪 (Leader)",
+    reason: "本月数据库事故频发：上周有人误删一次 user_sessions、前天又一次 TRUNCATE 测试库。Sharon 已经能在 PreToolUse 阶段拦下来，全员必装，下不为例。",
+    pushedAt: "2 小时前",
+    acknowledged: false,
+  },
+  {
+    slug: "code-review-checklist",
+    version: "v3",
+    fromLeader: "陈雪 (Leader)",
+    reason: "新的 LLM 信任边界检查项是上次 incident 的直接产物，希望全员 review 时都跑一遍。",
+    pushedAt: "1 天前",
+    acknowledged: true,
+  },
 ];
 
 /* ============================================================
@@ -1524,11 +2003,19 @@ function renderGrid() {
   const grid = document.getElementById("skill-grid");
   grid.innerHTML = SKILLS.map(s => `
     <div class="skill-card" onclick="goto('skill/${s.slug}')">
-      <div class="name">
-        <span>${s.name}</span>
-        <span class="tag green">${s.version}</span>
+      <div class="head">
+        <div class="skill-icon cat-${s.category}">${s.icon || "🧩"}</div>
+        <div class="title-area">
+          <div class="name">
+            <span class="slug">${s.name}</span>
+            <span class="tag green">${s.version}</span>
+          </div>
+        </div>
       </div>
-      <div class="desc">${s.desc}</div>
+      <div class="value-prop">
+        <div class="value-line"><span class="vl-label gain">装上后</span><span class="vl-text">${s.gain || s.desc}</span></div>
+        <div class="value-line"><span class="vl-label pain">解决</span><span class="vl-text muted">${s.pain || ""}</span></div>
+      </div>
       <div class="foot">
         <div class="author">
           <div class="mini-avatar">${s.authorInitial}</div>
@@ -1601,11 +2088,30 @@ function renderDetail(slug) {
       <span class="when">${v.when}</span>
     </li>`).join("");
   const tags = (s.tags || []).map(t => `<span class="tag">${t}</span>`).join(" ");
+
+  // Build example block (user/sharon/deny rows depending on what fields exist)
+  let exampleHtml = "";
+  if (s.example) {
+    const rows = [];
+    if (s.example.user)   rows.push(`<div class="example-row user"><div class="er-label">你</div><div class="er-content">${escapeHTML(s.example.user)}</div></div>`);
+    if (s.example.sharon) rows.push(`<div class="example-row sharon"><div class="er-label">Sharon</div><div class="er-content">${escapeHTML(s.example.sharon)}</div></div>`);
+    if (s.example.deny)   rows.push(`<div class="example-row deny"><div class="er-label">Sharon</div><div class="er-content">${escapeHTML(s.example.deny)}</div></div>`);
+    exampleHtml = `<div class="example-box">${rows.join("")}</div>`;
+  }
+
+  const installedCount = SKILLS.filter(x => x.slug === slug).length; // placeholder
+  const installedByCount = s.installs;
+  const totalMembers = MEMBERS.filter(m => m.role === "member").length;
+  const coverage = Math.round((installedByCount / totalMembers) * 100);
+
   document.getElementById("detail-content").innerHTML = `
     <div class="detail-head">
       <div class="crumb"><a href="#/browse">← 全部 skill</a> / ${s.name}</div>
-      <h1>${s.name}</h1>
-      <p class="desc">${s.desc}</p>
+      <h1 style="display:flex;align-items:center;gap:14px;">
+        <span class="skill-icon cat-${s.category}" style="width:42px;height:42px;font-size:22px;">${s.icon || "🧩"}</span>
+        ${s.name}
+      </h1>
+      <p class="desc">${s.gain || s.desc}</p>
       <div class="meta-row">
         <div><div class="mini-avatar" style="display:inline-grid;vertical-align:middle;margin-right:6px;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#93c5fd,#6366f1);color:#fff;font-size:10px;font-weight:700;place-items:center;">${s.authorInitial}</div>${s.author}</div>
         <span class="dot">·</span>
@@ -1613,11 +2119,45 @@ function renderDetail(slug) {
         <span class="dot">·</span>
         <div>${s.publishedAt}发布</div>
         <span class="dot">·</span>
-        <div>${s.installs} 人已装</div>
+        <div><b>${s.installs}</b> / ${totalMembers} 人已装 (${coverage}%)</div>
         <span class="dot">·</span>
         <div>${tags}</div>
       </div>
     </div>
+
+    <div class="value-prop-detail">
+      <h3>💡 好处一目了然</h3>
+      <div class="vpd-row pain">
+        <div class="vpd-icon">❓</div>
+        <div class="vpd-body">
+          <div class="vpd-title">解决什么问题</div>
+          <p class="vpd-text">${s.pain || s.desc}</p>
+        </div>
+      </div>
+      <div class="vpd-row gain">
+        <div class="vpd-icon">✨</div>
+        <div class="vpd-body">
+          <div class="vpd-title">装上后会发生什么</div>
+          <p class="vpd-text">${s.gain || s.desc}</p>
+        </div>
+      </div>
+      <div class="vpd-row trig">
+        <div class="vpd-icon">⚡</div>
+        <div class="vpd-body">
+          <div class="vpd-title">什么时候触发</div>
+          <p class="vpd-text">${s.triggers || "在 Claude Code 里相关上下文中自动激活。"}</p>
+        </div>
+      </div>
+      ${exampleHtml ? `
+      <div class="vpd-row example">
+        <div class="vpd-icon">🔎</div>
+        <div class="vpd-body">
+          <div class="vpd-title">来个例子</div>
+          ${exampleHtml}
+        </div>
+      </div>` : ""}
+    </div>
+
     <div class="detail-grid">
       <div class="readme">${renderReadme(s.readme)}</div>
       <div>
@@ -1626,6 +2166,10 @@ function renderDetail(slug) {
           <button class="btn primary big" onclick="openInstall('${s.slug}')">⬇ 一键安装到本地</button>
           <div class="install-cmd"><span class="prompt">$</span>sharon install ${s.slug}@${s.version}</div>
           <div style="font-size:11px;color:var(--fg-faint);margin-top:8px;">需要本地 sharon CLI ≥ 0.1.0</div>
+          <div class="push-launcher leader-only-block">
+            <button class="btn big" style="background:#1d2433;color:#fff;border-color:#1d2433;" onclick="openPushDialog('${s.slug}')">📤 推送给成员（强制安装）</button>
+            <div style="font-size:11px;color:var(--fg-faint);margin-top:8px;text-align:center;">仅 leader 可见 · 接收方自动安装且无法卸载</div>
+          </div>
         </div>
         <div class="side-card">
           <h3>投票 · 团队信号</h3>
@@ -1668,6 +2212,22 @@ function toggleVote(slug) {
 
 /* ============= Me Tabs ============= */
 function renderMe() {
+  // banner: unacknowledged inbox
+  const unack = INBOX.filter(i => !i.acknowledged).length;
+  const bannerHost = document.getElementById("inbox-banner-host");
+  if (unack > 0 && document.body.dataset.role !== "leader") {
+    bannerHost.innerHTML = `
+      <div class="inbox-banner">
+        <span class="pulse"></span>
+        <div style="flex:1;">
+          Leader 推送了 <b>${unack}</b> 个 skill 给你，已自动安装。
+          <a href="#" onclick="switchMeTab('inbox');return false;" style="color:var(--primary);font-weight:600;margin-left:6px;">查看 →</a>
+        </div>
+      </div>`;
+  } else {
+    bannerHost.innerHTML = "";
+  }
+
   // candidates
   document.getElementById("candidates-list").innerHTML = CANDIDATES.map(c => `
     <div class="candidate-card">
@@ -1691,6 +2251,40 @@ function renderMe() {
     document.getElementById("candidates-list").innerHTML = `<div class="empty-state"><div class="icon">✓</div><p>暂无候选</p><p class="hint">下次 Claude Code 会话结束时再扫一遍</p></div>`;
   }
 
+  // inbox (leader pushes received)
+  const inboxList = document.getElementById("inbox-list");
+  document.getElementById("inbox-count").textContent = unack;
+  document.getElementById("inbox-count").style.background = unack > 0 ? "var(--primary)" : "var(--surface-2)";
+  document.getElementById("inbox-count").style.color = unack > 0 ? "#fff" : "var(--fg-muted)";
+
+  if (INBOX.length === 0) {
+    inboxList.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Leader 还没推送过 skill 给你</p><p class="hint">如果有，会自动安装并出现在这里</p></div>`;
+  } else {
+    inboxList.innerHTML = INBOX.map((item, idx) => {
+      const skill = SKILLS.find(s => s.slug === item.slug);
+      return `
+        <div class="inbox-item">
+          <div class="ii-head">
+            <div style="flex:1;min-width:0;">
+              <h3>
+                <span class="skill-icon cat-${skill ? skill.category : 'safety'}" style="width:26px;height:26px;font-size:14px;border-radius:6px;">${skill ? skill.icon : '🔒'}</span>
+                ${item.slug} <span style="color:var(--fg-muted);font-weight:400;font-size:13px;">${item.version}</span>
+                <span class="forced-badge">🔒 必装</span>
+              </h3>
+              <div class="ii-meta">来自 <b>${item.fromLeader}</b> · ${item.pushedAt} · 已自动安装到 <code>~/.claude/skills/${item.slug}/</code></div>
+            </div>
+            <div class="ii-actions">
+              <button class="btn small" onclick="goto('skill/${item.slug}')">查看 skill</button>
+              ${item.acknowledged
+                ? `<button class="btn small" disabled style="opacity:0.5;">✓ 已了解</button>`
+                : `<button class="btn primary small" onclick="ackInbox(${idx})">我已了解</button>`}
+            </div>
+          </div>
+          <div class="ii-reason"><b>${item.fromLeader} 的推送理由：</b><br>${item.reason}</div>
+        </div>`;
+    }).join("");
+  }
+
   // published
   document.getElementById("published-list").innerHTML = PUBLISHED.map(p => `
     <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:16px;">
@@ -1706,27 +2300,42 @@ function renderMe() {
       </div>
     </div>`).join("");
 
-  // installed
+  // installed (with forced badge support)
   document.getElementById("installed-list").innerHTML = INSTALLED.map(i => `
-    <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:16px;">
-      <div>
-        <div style="font-weight:600;font-size:15px;">${i.slug}</div>
+    <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:16px;${i.forced ? "border-left:4px solid var(--primary);padding-left:16px;" : ""}">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:15px;">
+          ${i.slug}
+          ${i.forced ? `<span class="forced-badge">🔒 Leader 推送</span>` : ""}
+        </div>
         <div style="font-size:13px;color:var(--fg-muted);margin-top:4px;">
           ${i.version} · ${i.installedAt}安装 · <code>~/.claude/skills/${i.slug}/</code>
         </div>
+        ${i.forced ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;">来自 <b>${i.forcedBy}</b> · ${i.forcedReason}</div>` : ""}
       </div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;flex-shrink:0;">
         <button class="btn small" onclick="goto('skill/${i.slug}')">查看</button>
-        <button class="btn small">检查更新</button>
+        ${i.forced
+          ? `<button class="btn small" disabled title="leader 推送的 skill 不能由你卸载" style="opacity:0.6;">🔒 不可卸载</button>`
+          : `<button class="btn small">检查更新</button>`}
       </div>
     </div>`).join("");
 }
 
-document.getElementById("me-tabs").addEventListener("click", e => {
-  if (e.target.tagName !== "BUTTON") return;
-  const tab = e.target.dataset.tab;
+function ackInbox(idx) {
+  INBOX[idx].acknowledged = true;
+  renderMe();
+  toast("已确认。skill 仍然装着。");
+}
+
+function switchMeTab(tab) {
   document.querySelectorAll("#me-tabs .tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
   document.querySelectorAll("#page-me .tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-" + tab));
+}
+
+document.getElementById("me-tabs").addEventListener("click", e => {
+  if (e.target.tagName !== "BUTTON") return;
+  switchMeTab(e.target.dataset.tab);
 });
 
 function dismissCandidate(slug, btn) {
@@ -1833,6 +2442,19 @@ document.getElementById("role-switch").addEventListener("click", e => {
   badge.className = "role-badge " + role;
   syncSettingsRole();
   updateLeaderBadge();
+
+  // re-render current page so leader-only / member-only elements update + reactivate
+  const hash = location.hash;
+  if (hash.startsWith("#/skill/")) renderDetail(hash.replace("#/skill/", ""));
+  else if (hash === "#/me" || hash.startsWith("#/me")) {
+    // if member just switched and "inbox" was active, fall back to "candidates"
+    if (role === "leader") {
+      const active = document.querySelector("#me-tabs .tab.active");
+      if (active && active.dataset.tab === "inbox") switchMeTab("candidates");
+    }
+    renderMe();
+  }
+
   toast("角色已切换为 " + (role === "leader" ? "Leader" : "Member"));
 });
 
@@ -1843,6 +2465,104 @@ function toast(msg) {
   t.classList.add("show");
   clearTimeout(window._toastTimer);
   window._toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ============= Push Dialog (Leader) ============= */
+let _pushState = { slug: null, selected: new Set() };
+
+function openPushDialog(slug) {
+  const s = SKILLS.find(x => x.slug === slug);
+  if (!s) return;
+  _pushState.slug = slug;
+  _pushState.selected = new Set();
+  document.getElementById("push-skill-name").textContent = s.name + " @" + s.version;
+  document.getElementById("push-reason").value = "";
+
+  // Build member list (exclude leaders + self, mark already-installed)
+  const list = document.getElementById("member-pick-list");
+  // mock: pretend members who have already installed via FORCED don't need force again
+  list.innerHTML = MEMBERS.filter(m => m.role === "member" && !m.isSelf).map(m => {
+    const alreadyHas = (m.id === "lin-haoxuan") && INSTALLED.some(i => i.slug === slug);
+    return `
+      <label class="member-row" data-id="${m.id}">
+        <input type="checkbox" onchange="togglePushMember('${m.id}', this.checked, this)" />
+        <div class="m-avatar">${m.initial}</div>
+        <div class="m-info">
+          <div class="m-name">${m.name}</div>
+          <div class="m-status">
+            <span class="${m.online ? 'dot-online' : 'dot-offline'}"></span>
+            ${m.lastSeen}
+          </div>
+        </div>
+        ${alreadyHas ? '<span class="m-installed-tag">已装</span>' : ''}
+      </label>`;
+  }).join("");
+
+  updatePushCount();
+  document.getElementById("push-dialog").classList.add("show");
+}
+
+function togglePushMember(id, checked, el) {
+  if (checked) _pushState.selected.add(id);
+  else _pushState.selected.delete(id);
+  el.closest(".member-row").classList.toggle("selected", checked);
+  updatePushCount();
+}
+
+function updatePushCount() {
+  const n = _pushState.selected.size;
+  document.getElementById("pick-count").textContent = n;
+  document.getElementById("push-confirm-num").textContent = n;
+  document.getElementById("push-confirm-btn").disabled = (n === 0);
+}
+
+function closePushDialog() {
+  document.getElementById("push-dialog").classList.remove("show");
+}
+
+function confirmPush() {
+  const slug = _pushState.slug;
+  const s = SKILLS.find(x => x.slug === slug);
+  const n = _pushState.selected.size;
+  const reason = document.getElementById("push-reason").value.trim() || "（leader 未填写理由）";
+  const names = Array.from(_pushState.selected).map(id => {
+    const m = MEMBERS.find(x => x.id === id);
+    return m ? m.name : id;
+  });
+
+  // Mock: if "lin-haoxuan" is among selected, add to INBOX so member view sees it
+  if (_pushState.selected.has("lin-haoxuan")) {
+    INBOX.unshift({
+      slug: slug,
+      version: s.version,
+      fromLeader: "陈雪 (Leader)",
+      reason: reason,
+      pushedAt: "刚刚",
+      acknowledged: false,
+    });
+    // ensure installed (forced)
+    const existing = INSTALLED.findIndex(i => i.slug === slug);
+    if (existing >= 0) {
+      INSTALLED[existing].forced = true;
+      INSTALLED[existing].forcedBy = "陈雪 (Leader)";
+      INSTALLED[existing].forcedReason = reason;
+    } else {
+      INSTALLED.unshift({
+        slug: slug,
+        version: s.version,
+        installedAt: "刚刚",
+        forced: true,
+        forcedBy: "陈雪 (Leader)",
+        forcedReason: reason,
+      });
+    }
+  }
+  s.installs += n;
+
+  closePushDialog();
+  toast("已推送 " + s.name + " 给 " + n + " 人：" + names.slice(0, 3).join("、") + (names.length > 3 ? " 等" : ""));
+  // refresh detail if still on it
+  if (location.hash.startsWith("#/skill/")) renderDetail(location.hash.replace("#/skill/", ""));
 }
 
 /* ============= Install Dialog ============= */
