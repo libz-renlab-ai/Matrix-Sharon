@@ -1,0 +1,24 @@
+{
+  "name": "@matrix-sharon/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "bin": { "sharon-server": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'server has no logic yet — Phase 2+ adds tests' && exit 0",
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@matrix-sharon/adapters": "workspace:*",
+    "@matrix-sharon/ports": "workspace:*",
+    "@matrix-sharon/types": "workspace:*",
+    "fastify": "^5.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
