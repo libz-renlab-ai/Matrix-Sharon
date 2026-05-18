@@ -523,9 +523,9 @@ End-of-phase verification:
 
 ## Done definition
 
-- [ ] All 14 tasks committed
-- [ ] CI green on push
-- [ ] `pnpm -r typecheck && pnpm -r test` green locally
-- [ ] README ⏳ → ✅ for Phase 2
-- [ ] Memory snapshot saved
-- [ ] Phase 3 plan can start without unknowns about auth/session
+- [x] All 14 tasks committed
+- [x] CI green on push
+- [x] `pnpm -r typecheck && pnpm -r test` green locally (88 tests + 1 skipped)
+- [x] README ⏳ → ✅ for Phase 2
+- [x] Memory snapshot saved (`memory/phase-2-auth-done.md`)
+- [x] Phase 3 plan can start without unknowns about auth/session

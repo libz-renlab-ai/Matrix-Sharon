@@ -10,15 +10,12 @@
 
 ## 当前状态
 
-🎯 **Phase 1 scaffold 已完成。** 仓库已是可构建的 pnpm monorepo，CI 绿，DB 迁移可应用。
+🎯 **Phase 2 GitHub OAuth 已完成。** 仓库可构建 + CI 绿，登录链路打通（需自配 OAuth 应用密钥）。
 
 - ✅ [前端原型](./prototype/index.html) —— 全部主流程的可点击 demo（单 HTML 文件，零依赖）
 - ✅ [设计文档](./docs/superpowers/specs/2026-05-15-matrix-sharon-design.md) —— v1 spec
-- ✅ [Phase 1 实现计划](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-1-scaffold.md) —— 已执行完
-- ✅ 7 个 package 骨架（types/ports/core/adapters/server/web/cli）
-- ✅ SQLite 10 张表初始迁移
-- ✅ CI 绿（pnpm typecheck + test）
-- ⏳ Phase 2: GitHub OAuth + session（实现计划待写）
+- ✅ Phase 1 实现计划 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-1-scaffold.md)) —— 7 个 package 骨架 + SQLite 10 张表迁移 + CI
+- ✅ Phase 2 GitHub OAuth ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-2-auth.md)) —— `/login/github` + `/auth/callback` + `/auth/logout` + `/v1/me`；签名 session cookie；第一个登录用户自动成为 leader
 - ⏳ Phase 3: 浏览/详情 REST 端点 + Astro 页面接入
 - ⏳ Phase 4: 候选 / 提交 / 审批
 - ⏳ Phase 5: 安装 + 卸载（CLI + Web 一键）
@@ -39,6 +36,24 @@ pnpm --filter @matrix-sharon/adapters test
 pnpm --filter @matrix-sharon/server dev   # 启 server，端口 4321
 pnpm --filter @matrix-sharon/web dev      # 启 web，端口 4322（代理 /v1 到 4321）
 ```
+
+## OAuth 设置（运行真登录需要）
+
+不配置时 server 也能跑（`/health` 正常），只有 `/login/github` 返回 503 提示。要真登录：
+
+1. 浏览器开 <https://github.com/settings/developers> → **New OAuth App**
+2. 填：
+   - **Application name**：随意，比如 `matrix-sharon (local)`
+   - **Homepage URL**：`http://127.0.0.1:4321`
+   - **Authorization callback URL**：`http://127.0.0.1:4321/auth/callback`
+3. 创建后拿到 `Client ID`，再点 **Generate a new client secret** 拿到 secret
+4. 在仓库根（或 `packages/server/`）下放 `.env`：
+   ```env
+   GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
+   GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   SHARON_SESSION_SECRET=随便给 32+ 字节的随机串（openssl rand -hex 32）
+   ```
+5. `pnpm --filter @matrix-sharon/server dev` 启 server，访问 <http://127.0.0.1:4322>，点右上「使用 GitHub 登录」即可。第一个登录的用户自动成为 leader。
 
 ## 先看原型
 
