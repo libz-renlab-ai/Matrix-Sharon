@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { installCommand, parseSlugAt } from "./commands/install.js";
+import { uninstallCommand } from "./commands/uninstall.js";
+import { publishCommand } from "./commands/publish.js";
+import { scanCommand } from "./commands/scan.js";
 
 const HELP = `\
 sharon — Matrix-Sharon CLI
@@ -6,22 +10,60 @@ sharon — Matrix-Sharon CLI
 Usage:
   sharon <command> [args]
 
-Commands (Phase 1: none implemented yet):
-  init               Initialize local sharon config (Phase 2)
-  login              Sign in via GitHub OAuth (Phase 2)
-  publish <dir>      Publish a skill directory (Phase 4)
-  install <slug>     Install a skill from Sharon (Phase 5)
-  uninstall <slug>   Remove an installed skill (Phase 5)
-  scan               Detect local candidate skills (Phase 4)
-  --help, -h         Show this help
+Commands:
+  install <slug>[@<semver>]   Install a skill into ~/.claude/skills/<slug>/
+  uninstall <slug>            Remove an installed skill
+  publish <dir>               Submit a local skill directory for approval
+  scan                        Detect local ~/.claude/skills/* and post as candidates
+  --help, -h                  Show this help
 
-Phase 1 scaffold only. Run 'sharon --help' anytime.
+Env vars:
+  SHARON_BASE_URL   sharon server URL (default: http://127.0.0.1:4321)
+  SHARON_TOKEN      session cookie value (paste from browser DevTools → sharon_session)
+
+Examples:
+  SHARON_TOKEN=… sharon install sql-safety-gate
+  SHARON_TOKEN=… sharon install pr-review-checklist@2
+  SHARON_TOKEN=… sharon uninstall sql-safety-gate
+  SHARON_TOKEN=… sharon publish ./my-skill-dir
 `;
 
-const arg = process.argv[2];
-if (!arg || arg === "--help" || arg === "-h") {
-  process.stdout.write(HELP);
-  process.exit(0);
+async function main(): Promise<void> {
+  const [cmd, ...rest] = process.argv.slice(2);
+  if (!cmd || cmd === "--help" || cmd === "-h") {
+    process.stdout.write(HELP);
+    return;
+  }
+  switch (cmd) {
+    case "install": {
+      const arg = rest[0];
+      if (!arg) throw new Error("usage: sharon install <slug>[@<semver>]");
+      await installCommand(parseSlugAt(arg));
+      return;
+    }
+    case "uninstall": {
+      const slug = rest[0];
+      if (!slug) throw new Error("usage: sharon uninstall <slug>");
+      await uninstallCommand({ slug });
+      return;
+    }
+    case "publish": {
+      const dir = rest[0];
+      if (!dir) throw new Error("usage: sharon publish <dir>");
+      await publishCommand({ dir });
+      return;
+    }
+    case "scan": {
+      await scanCommand();
+      return;
+    }
+    default:
+      process.stderr.write(`sharon: unknown command '${cmd}'. Run 'sharon --help'.\n`);
+      process.exit(1);
+  }
 }
-process.stderr.write(`sharon: unknown command '${arg}'. Run 'sharon --help'.\n`);
-process.exit(1);
+
+main().catch((err) => {
+  console.error((err as Error).message ?? err);
+  process.exit(1);
+});
