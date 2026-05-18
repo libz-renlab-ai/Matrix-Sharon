@@ -3,6 +3,19 @@ import fastifyCookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+
+// Auto-load .env at the earliest moment so config.ts and the gating in
+// buildApp see whatever the user wrote in there. Walks up from cwd looking
+// for .env in current dir, parent, and grandparent (repo root for monorepo).
+// loadEnvFile does not overwrite existing process.env, so explicit env still wins.
+const loadEnv = (process as unknown as { loadEnvFile?: (p: string) => void }).loadEnvFile;
+if (typeof loadEnv === "function") {
+  for (const candidate of [".env", "../.env", "../../.env"]) {
+    if (existsSync(candidate)) {
+      try { loadEnv(candidate); break; } catch { /* ignore */ }
+    }
+  }
+}
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
 import {
@@ -26,6 +39,7 @@ import { registerCandidateRoutes } from "./routes/candidates.js";
 import { registerSubmissionRoutes } from "./routes/submissions.js";
 import { registerInstallRoutes } from "./routes/install.js";
 import { registerPushRoutes } from "./routes/pushes.js";
+import { registerDevAuthRoutes } from "./routes/dev-auth.js";
 
 export interface BuildAppOptions {
   /** Override Fastify logger. Default: pino in production, silent in test. */
@@ -55,6 +69,13 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
   await registerSubmissionRoutes(app);
   await registerInstallRoutes(app);
   await registerPushRoutes(app);
+
+  // Dev-only OAuth bypass — gated by SHARON_DEV_AUTH=true and refused in
+  // production. Lets local trials skip the GitHub OAuth registration step.
+  if (process.env["SHARON_DEV_AUTH"] === "true" && process.env["NODE_ENV"] !== "production") {
+    await registerDevAuthRoutes(app);
+    app.log.warn("SHARON_DEV_AUTH enabled — /dev-login is OPEN. Do not use in production.");
+  }
 
   if (opts.webDist && existsSync(opts.webDist) && statSync(opts.webDist).isDirectory()) {
     await app.register(fastifyStatic, {

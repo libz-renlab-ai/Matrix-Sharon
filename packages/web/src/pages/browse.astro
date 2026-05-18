@@ -1,5 +1,6 @@
 ---
 import Header from "../components/Header.astro";
+import "../styles/tokens.css";
 ---
 <html lang="zh-CN">
   <head>
@@ -7,19 +8,121 @@ import Header from "../components/Header.astro";
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>浏览 · Matrix-Sharon</title>
     <style>
-      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
-      main { padding: 32px 24px; max-width: 1080px; margin: 0 auto; }
-      h1 { margin: 0 0 24px; }
-      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-      .skeleton { background: #fff; border: 1px solid #e6e8ee; border-radius: 10px; height: 132px; }
-      .err { background: #fff3f3; color: #c33d3d; border: 1px solid #f7caca; padding: 16px; border-radius: 8px; }
+      .browse-hero {
+        background: linear-gradient(135deg, #eceaff 0%, #e6f3ff 100%);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 36px 32px;
+        margin-bottom: 24px;
+      }
+      .browse-hero h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.4px; }
+      .browse-hero p  { margin: 0 0 20px; color: var(--fg-muted); font-size: 14px; }
+      .search-box {
+        display: flex;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 4px;
+        box-shadow: var(--shadow-sm);
+        max-width: 540px;
+      }
+      .search-box input {
+        flex: 1; border: none; background: transparent;
+        padding: 8px 14px; font-size: 14px; color: var(--fg); outline: none;
+      }
+      .trending-banner {
+        background: linear-gradient(90deg, #fff7e6 0%, #fff2db 100%);
+        border: 1px solid #ffe6c2;
+        border-radius: var(--radius);
+        padding: 14px 18px;
+        margin-bottom: 24px;
+        font-size: 13px;
+        color: #8a5a00;
+        display: flex; align-items: center; gap: 10px;
+      }
+      .browse-meta {
+        display: flex; align-items: baseline; justify-content: space-between;
+        margin: 0 0 16px;
+      }
+      .browse-meta h2 { margin: 0; font-size: 18px; font-weight: 700; }
+      .filter-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--fg-muted); }
+      .filter-row select {
+        border: 1px solid var(--border); background: var(--surface);
+        border-radius: 6px; padding: 4px 8px; font-size: 13px; color: var(--fg);
+      }
+      .skill-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+      }
+      .skill-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        display: flex; flex-direction: column; gap: 10px;
+        cursor: pointer; text-decoration: none; color: inherit;
+        transition: border-color 0.12s, transform 0.08s, box-shadow 0.12s;
+      }
+      .skill-card:hover { border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+      .skill-card .head { display: flex; align-items: center; gap: 10px; }
+      .skill-card .head .skill-icon { width: 36px; height: 36px; }
+      .skill-card .title-area { flex: 1; min-width: 0; }
+      .skill-card .name {
+        font-size: 15px; font-weight: 600; color: var(--fg);
+        display: flex; align-items: center; gap: 8px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .value-prop { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+      .value-line { display: flex; gap: 6px; font-size: 13px; line-height: 1.5; }
+      .value-line .vl-label {
+        font-weight: 700; font-size: 10px; letter-spacing: 0.6px;
+        padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
+        align-self: flex-start; margin-top: 3px;
+      }
+      .value-line.gain .vl-label { background: var(--accent-soft); color: var(--accent); }
+      .value-line.pain .vl-label { background: var(--surface-2); color: var(--fg-muted); }
+      .value-line .vl-text { color: var(--fg); }
+      .value-line.pain .vl-text { color: var(--fg-muted); }
+      .skill-card .foot {
+        display: flex; align-items: center; justify-content: space-between;
+        font-size: 12px; color: var(--fg-faint);
+        padding-top: 8px; border-top: 1px solid var(--border);
+      }
+      .skill-card .author { display: flex; align-items: center; gap: 6px; }
+      .skill-card .mini-avatar { width: 18px; height: 18px; border-radius: 50%; }
+      .skill-card .stats { display: flex; gap: 12px; }
+      .stat { display: inline-flex; align-items: center; gap: 3px; }
+      .skeleton { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); height: 168px; }
+      .err { background: var(--danger-soft); color: var(--danger); border: 1px solid #f7caca; padding: 16px; border-radius: 8px; }
     </style>
   </head>
   <body>
-    <Header />
-    <main>
-      <h1>浏览技能</h1>
-      <div id="browse-grid" class="grid" aria-live="polite">
+    <Header active="browse" />
+    <main class="container">
+      <section class="browse-hero">
+        <h1>团队的 skill，一处汇总</h1>
+        <p>从本地 scanner 自动发现，经 leader 审核过的高质量 skill。搜一搜，一键装进 <code>~/.claude/skills/</code>。</p>
+        <form class="search-box" id="search-form" onsubmit="return false;">
+          <input id="search-input" type="text" placeholder="按名称 / 标签搜索…" />
+        </form>
+      </section>
+
+      <div id="trending-banner-host"></div>
+
+      <div class="browse-meta">
+        <h2 id="result-count">全部 skill</h2>
+        <div class="filter-row">
+          <label for="sort-select">排序</label>
+          <select id="sort-select">
+            <option value="recent">最近更新</option>
+            <option value="installs">安装最多</option>
+            <option value="name">按名称</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="browse-grid" class="skill-grid" aria-live="polite">
         <div class="skeleton"></div>
         <div class="skeleton"></div>
         <div class="skeleton"></div>
@@ -27,19 +130,22 @@ import Header from "../components/Header.astro";
     </main>
 
     <script>
-      type SkillsResponse = {
-        skills: Array<{
-          skill: { slug: string; name: string; category: string | null; icon: string | null; authorId: string };
-          currentVersion: { semver: number; description: string; pain: string | null };
-        }>;
+      type Row = {
+        skill: { slug: string; name: string; category: string | null; icon: string | null; authorId: string; createdAt: number };
+        currentVersion: { semver: number; description: string; pain: string | null; gain: string | null; publishedAt: number };
+        installCount?: number;
       };
+      type SkillsResponse = { skills: Row[] };
 
-      const CATEGORY_COLORS: Record<string, string> = {
-        safety: "#c33d3d", review: "#5b5bd6", debug: "#c67a00", write: "#00a47c",
-        perf: "#7d4ec3", test: "#00879c", i18n: "#0072c6", git: "#5c6678",
-      };
+      const KNOWN_CATS = new Set(["safety","review","debug","write","perf","test","i18n","git"]);
 
-      const grid = document.getElementById("browse-grid")!;
+      const grid     = document.getElementById("browse-grid")!;
+      const search   = document.getElementById("search-input") as HTMLInputElement;
+      const sortSel  = document.getElementById("sort-select") as HTMLSelectElement;
+      const countEl  = document.getElementById("result-count")!;
+      const trending = document.getElementById("trending-banner-host")!;
+
+      let allRows: Row[] = [];
 
       async function load() {
         try {
@@ -50,53 +156,96 @@ import Header from "../components/Header.astro";
           }
           if (!res.ok) throw new Error(`/v1/skills returned ${res.status}`);
           const body = (await res.json()) as SkillsResponse;
-          if (body.skills.length === 0) {
-            grid.outerHTML = `
-              <div class="empty" style="text-align:center;padding:64px 24px;color:#5c6678;">
-                <div style="font-size:48px;margin-bottom:12px">🧩</div>
-                <h2 style="margin:0 0 6px;color:#1d2433">还没有 skill</h2>
-                <p style="margin:0;font-size:14px">
-                  跑 <code>pnpm --filter @matrix-sharon/server exec sharon-server-seed</code> 灌入 3 个样例。
-                </p>
-              </div>
-            `;
-            return;
+          allRows = body.skills;
+          if (allRows.length > 0) {
+            const top = [...allRows].sort((a, b) => b.currentVersion.publishedAt - a.currentVersion.publishedAt)[0]!;
+            trending.innerHTML = `
+              <div class="trending-banner">
+                <span>🔥</span>
+                <span><b>最新上架：</b>${escapeHtml(top.skill.name)} · ${escapeHtml(top.currentVersion.description || "")}</span>
+              </div>`;
           }
-          grid.innerHTML = body.skills.map((row) => renderCard(row)).join("");
+          render();
         } catch (err) {
           console.error(err);
           grid.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
         }
       }
 
-      function renderCard(row: SkillsResponse["skills"][number]): string {
-        const color = (row.skill.category && CATEGORY_COLORS[row.skill.category]) || "#5c6678";
-        const icon = row.skill.icon || "🧩";
-        const pain = row.currentVersion.pain || row.currentVersion.description || "";
-        const trunc = pain.length > 110 ? pain.slice(0, 110) + "…" : pain;
-        const href = `/skills?slug=${encodeURIComponent(row.skill.slug)}`;
-        return `
-          <a class="skill-card" href="${href}" style="display:block;background:#fff;border:1px solid #e6e8ee;border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;">
-            <div style="height:4px;background:${color}"></div>
-            <div style="padding:14px 16px 12px;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                <span style="font-size:22px">${icon}</span>
-                <span style="font-weight:600">${escapeHtml(row.skill.name)}</span>
-              </div>
-              <p style="color:#5c6678;font-size:13px;margin:0 0 10px;min-height:36px;">${escapeHtml(trunc)}</p>
-              <div style="display:flex;justify-content:space-between;font-size:12px;color:#8b91a0;">
-                <span style="background:#eef0f5;padding:1px 6px;border-radius:4px;color:#5c6678">v${row.currentVersion.semver}</span>
-                <span>@${escapeHtml(row.skill.authorId)}</span>
-              </div>
-            </div>
-          </a>
-        `;
+      function render() {
+        const q = search.value.trim().toLowerCase();
+        let rows = allRows;
+        if (q) {
+          rows = rows.filter((r) =>
+            r.skill.name.toLowerCase().includes(q)
+            || (r.currentVersion.description || "").toLowerCase().includes(q)
+            || (r.currentVersion.pain || "").toLowerCase().includes(q)
+          );
+        }
+        const sort = sortSel.value;
+        if (sort === "recent") rows = [...rows].sort((a, b) => b.currentVersion.publishedAt - a.currentVersion.publishedAt);
+        else if (sort === "name") rows = [...rows].sort((a, b) => a.skill.name.localeCompare(b.skill.name));
+        // installs sort: would need server data; fallback to recent.
+
+        countEl.textContent = `${rows.length} 个 skill${q ? `（关键词「${q}」）` : ""}`;
+        if (rows.length === 0) {
+          grid.innerHTML = `
+            <div class="empty-state" style="grid-column:1/-1">
+              <span class="emoji">🔍</span>
+              <p>没有匹配的 skill。</p>
+            </div>`;
+          return;
+        }
+        grid.innerHTML = rows.map(renderCard).join("");
       }
 
+      function renderCard(row: Row): string {
+        const cat = row.skill.category && KNOWN_CATS.has(row.skill.category) ? row.skill.category : "review";
+        const icon = row.skill.icon || "🧩";
+        const gain = row.currentVersion.gain || row.currentVersion.description || "";
+        const pain = row.currentVersion.pain || "";
+        const href = `/skills?slug=${encodeURIComponent(row.skill.slug)}`;
+        return `
+          <a class="skill-card" href="${href}">
+            <div class="head">
+              <span class="skill-icon cat-${cat}">${icon}</span>
+              <div class="title-area">
+                <div class="name">
+                  <span>${escapeHtml(row.skill.name)}</span>
+                  <span class="tag green">v${row.currentVersion.semver}</span>
+                </div>
+              </div>
+            </div>
+            <div class="value-prop">
+              ${gain ? `<div class="value-line gain"><span class="vl-label">GAIN</span><span class="vl-text">${escapeHtml(truncate(gain, 90))}</span></div>` : ""}
+              ${pain ? `<div class="value-line pain"><span class="vl-label">PAIN</span><span class="vl-text">${escapeHtml(truncate(pain, 90))}</span></div>` : ""}
+            </div>
+            <div class="foot">
+              <span class="author">
+                <img class="mini-avatar" src="https://github.com/${encodeURIComponent(row.skill.authorId)}.png" alt="" onerror="this.style.display='none'" />
+                <span>${escapeHtml(row.skill.authorId)}</span>
+              </span>
+              <span class="stats">
+                <span class="stat">📅 ${formatDate(row.currentVersion.publishedAt)}</span>
+              </span>
+            </div>
+          </a>`;
+      }
+
+      function truncate(s: string, n: number): string { return s.length > n ? s.slice(0, n) + "…" : s; }
+      function formatDate(ms: number): string {
+        const days = Math.floor((Date.now() - ms) / 86400000);
+        if (days === 0) return "今天";
+        if (days === 1) return "昨天";
+        if (days < 30) return `${days} 天前`;
+        return new Date(ms).toISOString().slice(0, 10);
+      }
       function escapeHtml(s: string): string {
         return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
       }
 
+      search.addEventListener("input", render);
+      sortSel.addEventListener("change", render);
       load();
     </script>
   </body>

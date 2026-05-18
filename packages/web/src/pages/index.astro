@@ -1,51 +1,103 @@
 ---
 import Header from "../components/Header.astro";
-const title = "Matrix-Sharon · 团队技能集市";
+import "../styles/tokens.css";
 ---
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
+    <title>Matrix-Sharon · 团队技能集市</title>
     <style>
-      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
-      main { padding: 48px 24px; max-width: 880px; margin: 0 auto; }
-      h1 { margin: 0 0 8px; }
-      .lead { color: #5c6678; margin: 0 0 28px; font-size: 16px; }
-      .cta {
-        display: inline-block; background: #5b5bd6; color: #fff; padding: 12px 24px;
-        border-radius: 8px; text-decoration: none; font-weight: 500; margin-bottom: 24px;
+      .landing-hero {
+        background: linear-gradient(135deg, #eceaff 0%, #e6f3ff 100%);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 56px 40px;
+        text-align: center;
+        margin-bottom: 32px;
       }
-      .cta:hover { background: #4747b3; }
-      .phase-status { background: #fff; border: 1px solid #e6e8ee; border-radius: 8px; padding: 16px; }
-      .phase-status h2 { margin: 0 0 12px; font-size: 16px; }
-      .phase-status ul { margin: 0; padding-left: 20px; line-height: 1.8; }
-      code { background: #eef0f5; padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+      .landing-hero h1 { font-size: 38px; margin: 0 0 12px; letter-spacing: -0.5px; }
+      .landing-hero p { font-size: 16px; color: var(--fg-muted); max-width: 640px; margin: 0 auto 28px; }
+      .landing-cta { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+      .feature-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+        margin-top: 24px;
+      }
+      @media (max-width: 800px) { .feature-grid { grid-template-columns: 1fr; } }
+      .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 22px; }
+      .feature-icon { font-size: 28px; margin-bottom: 12px; }
+      .feature-card h3 { font-size: 16px; margin: 0 0 6px; font-weight: 600; }
+      .feature-card p { font-size: 13px; color: var(--fg-muted); margin: 0; line-height: 1.5; }
+
+      .quick-links {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 24px 28px; margin-top: 32px;
+      }
+      .quick-links h2 { margin: 0 0 16px; font-size: 18px; }
+      .quick-row { display: flex; gap: 10px; flex-wrap: wrap; }
     </style>
   </head>
   <body>
-    <Header />
-    <main>
-      <h1>Matrix-Sharon</h1>
-      <p class="lead">团队技能集市 — 上传、审批、一键安装。</p>
+    <Header active="" />
+    <main class="container">
+      <section class="landing-hero">
+        <h1>团队的 Claude 技能，一处汇总</h1>
+        <p>本地 scanner 自动发现 → leader 审核 → 一键安装到本地 → leader 推送给指定成员 → 留存率回流看板。<br/>给团队用的 Claude Code 技能集市。</p>
+        <div class="landing-cta">
+          <a class="btn primary big" href="/browse">→ 浏览技能</a>
+          <a class="btn big" href="/me">→ 个人中心</a>
+        </div>
+      </section>
 
-      <a class="cta" href="/browse">→ 浏览技能</a>
-      <a class="cta" href="/me/candidates" style="background:#00a47c">→ 待我决定</a>
-      <a class="cta" href="/me/inbox" style="background:#7d4ec3">→ 我的推送</a>
-      <a class="cta" href="/leader/queue" style="background:#c67a00">→ 审批队列（leader）</a>
-      <a class="cta" href="/leader/pushes" style="background:#c33d3d">→ 推送留存（leader）</a>
+      <section class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔍</div>
+          <h3>浏览 & 一键安装</h3>
+          <p>看团队已经审核过的高质量 skill，点一下装进 <code>~/.claude/skills/</code>，下次 Claude Code 启动就能用。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📥</div>
+          <h3>本地候选自动发现</h3>
+          <p>跑 <code>sharon scan</code>，你本机的 skill 自动浮到「待我决定」。一键转 submission，进 leader 审批。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Leader 审批门</h3>
+          <p>所有上架的 skill 都要 leader 批准才公开。AI 时代下，这是过滤垃圾的底层防线。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📤</div>
+          <h3>精准推送给成员</h3>
+          <p>Leader 可以把"必装"skill 推给指定成员，他们跑 <code>sharon receive</code> 时自动装上。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>留存率回流</h3>
+          <p>谁装了、谁没装、谁卸了——leader 看到每个推送的真实留存数据，不只是"发完就完"。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>不可变版本</h3>
+          <p>每次审批通过自动生 v1 / v2 / v3，旧版本永远能装。pin 版本、回滚都顺手。</p>
+        </div>
+      </section>
 
-      <div class="phase-status">
-        <h2>当前阶段</h2>
-        <ul>
-          <li>✅ Phase 1 — 7 包脚手架 + SQLite 10 表迁移</li>
-          <li>✅ Phase 2 — GitHub OAuth、签名 session、<code>/v1/me</code></li>
-          <li>✅ Phase 3 — 浏览 / 详情 REST + Astro 浏览页 / 详情页</li>
-          <li>✅ Phase 4 — 候选 → 提交 → 审批 → 不可变版本 + bundle</li>
-          <li>✅ Phase 5 — 安装 / 卸载（CLI + Web 一键 + sharon:// 深链）</li>
-          <li>✅ Phase 6 — Leader 推送 + 接收侧 dispatcher + 留存信号 — v1 完成 🎉</li>
-        </ul>
-      </div>
+      <section class="quick-links">
+        <h2>快捷入口</h2>
+        <div class="quick-row">
+          <a class="btn" href="/browse">浏览技能</a>
+          <a class="btn" href="/me">个人中心（候选 / 推送 / 已装 / 已发）</a>
+          <a class="btn leader-only" href="/leader/queue">审批队列</a>
+          <a class="btn leader-only" href="/leader/pushes">推送留存</a>
+          <a class="btn" href="/settings">设置</a>
+        </div>
+      </section>
     </main>
+
+    <style is:inline>
+      .btn.leader-only { display: none; }
+      body[data-role="leader"] .btn.leader-only { display: inline-flex; }
+    </style>
   </body>
 </html>

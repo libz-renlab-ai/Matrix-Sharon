@@ -1,0 +1,397 @@
+---
+import Header from "../components/Header.astro";
+import "../styles/tokens.css";
+---
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>个人中心 · Matrix-Sharon</title>
+    <style>
+      .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 0 0 24px; }
+      .tab {
+        padding: 10px 16px; background: transparent; border: none;
+        color: var(--fg-muted); font-size: 14px; font-weight: 500;
+        cursor: pointer; border-bottom: 2px solid transparent;
+        margin-bottom: -1px; display: inline-flex; align-items: center; gap: 8px;
+      }
+      .tab:hover { color: var(--fg); }
+      .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+      .tab-badge {
+        background: var(--surface-2); color: var(--fg-muted);
+        font-size: 11px; padding: 1px 6px; border-radius: 999px; font-weight: 600;
+        min-width: 18px; text-align: center;
+      }
+      .tab.active .tab-badge { background: var(--primary-soft); color: var(--primary); }
+      .tab[data-tab="inbox"] .tab-badge.unack { background: var(--primary); color: #fff; }
+      body[data-role="leader"] .tab[data-tab="inbox"] { display: none; }
+
+      .tab-pane { display: none; }
+      .tab-pane.active { display: block; animation: fadein 0.18s ease-out; }
+      @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+      .row-card {
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 16px 20px; margin-bottom: 12px;
+        display: flex; gap: 16px; align-items: flex-start;
+      }
+      .row-card.forced { border-left: 4px solid var(--primary); }
+      .row-card .col-info { flex: 1; min-width: 0; }
+      .row-card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+      .row-card .meta { color: var(--fg-muted); font-size: 13px; margin: 0; }
+      .row-card .time { color: var(--fg-faint); font-size: 12px; margin: 4px 0 0; }
+      .row-card .actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+      .forced-badge {
+        background: #fff; color: var(--primary);
+        font-size: 10px; padding: 2px 6px; border-radius: 4px;
+        font-weight: 700; border: 1px solid var(--primary-soft);
+        letter-spacing: 0.4px;
+      }
+
+      .candidate-card { margin-bottom: 14px; }
+      .candidate-head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+      .candidate-head .col-info { flex: 1; min-width: 0; }
+      .candidate-head h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+      .candidate-head .reason { color: var(--fg-muted); font-size: 13px; margin: 0; line-height: 1.5; }
+
+      .inbox-item { border-left: 4px solid var(--primary); }
+      .ii-reason {
+        background: var(--surface-2); border-left: 3px solid var(--primary);
+        padding: 10px 14px; border-radius: 4px; font-size: 13px; color: var(--fg);
+        margin-top: 12px;
+      }
+      .status-pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+      .status-pill.pending     { background: var(--warning-soft); color: var(--warning); }
+      .status-pill.installed   { background: var(--accent-soft); color: var(--accent); }
+      .status-pill.failed      { background: var(--danger-soft); color: var(--danger); }
+      .status-pill.uninstalled { background: var(--surface-2); color: var(--fg-muted); }
+
+      .err { background: var(--danger-soft); color: var(--danger); border: 1px solid #f7caca; padding: 12px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <Header active="me" />
+    <main class="container">
+      <h1 class="h1">个人中心</h1>
+      <p class="subtitle">本地 scanner 检测到的候选、leader 推过来的、你提交过的、你已经装上的——都在这里。</p>
+
+      <div id="inbox-banner-host"></div>
+
+      <div class="tabs" id="me-tabs">
+        <button class="tab active" data-tab="candidates">待我决定 <span id="badge-candidates" class="tab-badge" hidden></span></button>
+        <button class="tab" data-tab="inbox">Leader 推送 <span id="badge-inbox" class="tab-badge unack" hidden></span></button>
+        <button class="tab" data-tab="submissions">我发布的 <span id="badge-submissions" class="tab-badge" hidden></span></button>
+        <button class="tab" data-tab="installs">我已安装 <span id="badge-installs" class="tab-badge" hidden></span></button>
+      </div>
+
+      <section id="pane-candidates" class="tab-pane active"><p style="color:var(--fg-faint);">加载中…</p></section>
+      <section id="pane-inbox" class="tab-pane"><p style="color:var(--fg-faint);">加载中…</p></section>
+      <section id="pane-submissions" class="tab-pane"><p style="color:var(--fg-faint);">加载中…</p></section>
+      <section id="pane-installs" class="tab-pane"><p style="color:var(--fg-faint);">加载中…</p></section>
+    </main>
+
+    <script>
+      type Candidate = {
+        id: string; userId: string; skillSlug: string; detectedAt: number; reason: string;
+        diffUnified: string | null; fullContentMd: string;
+      };
+      type InboxItem = {
+        push: { id: string; kind: string; skillSlug: string; reason: string; pushedAt: number; fromLeaderId: string };
+        receipt: { status: "pending"|"installed"|"failed"|"uninstalled"; acknowledged: boolean; failReason: string | null };
+      };
+      type Submission = {
+        id: string; skillSlug: string; isNewSkill: boolean;
+        submittedAt: number; status: "pending"|"approved"|"rejected"; rejectReason: string | null;
+      };
+      type Install = {
+        userId: string; skillSlug: string; skillVersionId: string;
+        installedAt: number; uninstalledAt: number | null; viaPushId: string | null;
+      };
+
+      const tabs = document.querySelectorAll<HTMLButtonElement>(".tab");
+      const panes = document.querySelectorAll<HTMLElement>(".tab-pane");
+      tabs.forEach((t) => t.addEventListener("click", () => {
+        const tab = t.dataset["tab"]!;
+        tabs.forEach((x) => x.classList.toggle("active", x === t));
+        panes.forEach((p) => p.classList.toggle("active", p.id === `pane-${tab}`));
+      }));
+
+      function escapeHtml(s: string): string {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function fmt(ms: number): string {
+        const days = Math.floor((Date.now() - ms) / 86400000);
+        if (days === 0) {
+          const h = Math.floor((Date.now() - ms) / 3600000);
+          if (h === 0) return "刚刚";
+          return `${h} 小时前`;
+        }
+        if (days === 1) return "昨天";
+        if (days < 30) return `${days} 天前`;
+        return new Date(ms).toISOString().slice(0, 10);
+      }
+      function showToast(msg: string) {
+        const t = document.createElement("div");
+        t.className = "toast"; t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 2200);
+      }
+      function setBadge(id: string, n: number) {
+        const el = document.getElementById(id)!;
+        if (n === 0) { el.hidden = true; return; }
+        el.hidden = false; el.textContent = String(n);
+      }
+      function renderDiff(diff: string): string {
+        return diff.split("\n").map((line) => {
+          let cls = "ctx";
+          if (line.startsWith("@@"))      cls = "hunk";
+          else if (line.startsWith("+"))  cls = "add";
+          else if (line.startsWith("-"))  cls = "del";
+          return `<div class="diff-line ${cls}">${escapeHtml(line || " ")}</div>`;
+        }).join("");
+      }
+
+      async function load() {
+        const meRes = await fetch("/v1/me", { credentials: "same-origin" });
+        if (meRes.status === 401) {
+          location.href = `/login/github?returnTo=${encodeURIComponent("/me")}`;
+          return;
+        }
+        await Promise.all([loadCandidates(), loadInbox(), loadSubmissions(), loadInstalls()]);
+      }
+
+      // ── candidates ────────────────────────────────────────────────────
+      async function loadCandidates() {
+        const pane = document.getElementById("pane-candidates")!;
+        try {
+          const res = await fetch("/v1/candidates/mine", { credentials: "same-origin" });
+          if (!res.ok) throw new Error(`/v1/candidates/mine ${res.status}`);
+          const { candidates } = (await res.json()) as { candidates: Candidate[] };
+          setBadge("badge-candidates", candidates.length);
+          if (candidates.length === 0) {
+            pane.innerHTML = `<div class="empty-state"><span class="emoji">✓</span><p>当前没有候选 skill。</p><p style="font-size:13px;">跑 <code>sharon scan</code> 让本地新写的 skill 浮出来。</p></div>`;
+            return;
+          }
+          pane.innerHTML = candidates.map((c) => {
+            const preview = c.diffUnified
+              ? `<div class="diff-box">${renderDiff(c.diffUnified)}</div>`
+              : `<div class="diff-box">${escapeHtml(c.fullContentMd)}</div>`;
+            return `
+              <div class="card candidate-card" data-id="${c.id}">
+                <div class="candidate-head">
+                  <div class="col-info">
+                    <h3>${escapeHtml(c.skillSlug)}</h3>
+                    <p class="reason">${escapeHtml(c.reason)}</p>
+                    <p class="time" style="color:var(--fg-faint);font-size:12px;margin-top:6px;">${fmt(c.detectedAt)}</p>
+                  </div>
+                  <div class="actions">
+                    <button class="btn primary" data-act="submit">发布候选 →</button>
+                    <button class="btn ghost" data-act="dismiss">忽略</button>
+                  </div>
+                </div>
+                ${preview}
+              </div>`;
+          }).join("");
+
+          pane.querySelectorAll<HTMLButtonElement>(".btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              const row = btn.closest<HTMLDivElement>(".candidate-card")!;
+              const id = row.dataset["id"]!;
+              btn.disabled = true;
+              try {
+                if (btn.dataset["act"] === "submit") {
+                  const r = await fetch("/v1/submissions", {
+                    method: "POST", credentials: "same-origin",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ candidateId: id }),
+                  });
+                  if (!r.ok) throw new Error(`submit ${r.status}: ${await r.text()}`);
+                  showToast("已提交到 leader 队列");
+                  await loadSubmissions();
+                } else {
+                  const r = await fetch(`/v1/candidates/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" });
+                  if (!r.ok) throw new Error(`dismiss ${r.status}`);
+                  showToast("已忽略");
+                }
+                row.remove();
+                const remaining = pane.querySelectorAll(".candidate-card").length;
+                setBadge("badge-candidates", remaining);
+                if (remaining === 0) await loadCandidates();
+              } catch (err) {
+                console.error(err); btn.disabled = false;
+                alert(`操作失败：${err}`);
+              }
+            });
+          });
+        } catch (err) {
+          console.error(err);
+          pane.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      // ── inbox ─────────────────────────────────────────────────────────
+      async function loadInbox() {
+        const pane = document.getElementById("pane-inbox")!;
+        const bannerHost = document.getElementById("inbox-banner-host")!;
+        try {
+          const res = await fetch("/v1/pushes/inbox", { credentials: "same-origin" });
+          if (!res.ok) throw new Error(`/v1/pushes/inbox ${res.status}`);
+          const { items } = (await res.json()) as { items: InboxItem[] };
+          const unack = items.filter((i) => !i.receipt.acknowledged);
+          setBadge("badge-inbox", unack.length);
+
+          if (unack.length > 0) {
+            bannerHost.innerHTML = `
+              <div class="inbox-banner">
+                <span class="pulse"></span>
+                <span>Leader 推送了 <b>${unack.length}</b> 个 skill 等你查收。<a href="#" id="banner-open" style="color:var(--primary);font-weight:600;margin-left:8px;">查看 →</a></span>
+              </div>`;
+            document.getElementById("banner-open")!.addEventListener("click", (e) => {
+              e.preventDefault();
+              (document.querySelector('.tab[data-tab="inbox"]') as HTMLButtonElement).click();
+            });
+          } else {
+            bannerHost.innerHTML = "";
+          }
+
+          if (items.length === 0) {
+            pane.innerHTML = `<div class="empty-state"><span class="emoji">📭</span><p>还没有 leader 推送过资源给你。</p></div>`;
+            return;
+          }
+          pane.innerHTML = items.map((it) => {
+            const status = it.receipt.status;
+            const statusText = { pending: "待安装", installed: "✓ 已安装", failed: "✗ 失败", uninstalled: "已卸载" }[status];
+            return `
+              <div class="row-card inbox-item" data-push-id="${it.push.id}">
+                <div class="col-info">
+                  <h3>
+                    ${escapeHtml(it.push.skillSlug)}
+                    <span class="forced-badge">📌 Leader 推送</span>
+                    <span class="status-pill ${status}">${statusText}</span>
+                  </h3>
+                  <p class="meta">来自 @${escapeHtml(it.push.fromLeaderId)} · ${fmt(it.push.pushedAt)}${it.receipt.failReason ? ` · <span style="color:var(--danger)">${escapeHtml(it.receipt.failReason)}</span>` : ""}</p>
+                  <div class="ii-reason">${escapeHtml(it.push.reason)}</div>
+                </div>
+                <div class="actions">
+                  ${it.receipt.acknowledged
+                    ? '<button class="btn ghost" disabled>✓ 已了解</button>'
+                    : '<button class="btn primary" data-act="ack">我已了解</button>'}
+                  <a class="btn ghost" href="/skills?slug=${encodeURIComponent(it.push.skillSlug)}">查看</a>
+                </div>
+              </div>`;
+          }).join("");
+
+          pane.querySelectorAll<HTMLButtonElement>('button[data-act="ack"]').forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              const row = btn.closest<HTMLDivElement>(".inbox-item")!;
+              const pushId = row.dataset["pushId"]!;
+              btn.disabled = true;
+              try {
+                const r = await fetch(`/v1/pushes/${encodeURIComponent(pushId)}/acknowledge`, { method: "POST", credentials: "same-origin" });
+                if (!r.ok) throw new Error(`ack ${r.status}`);
+                showToast("已确认");
+                await loadInbox();
+              } catch (err) {
+                console.error(err); btn.disabled = false;
+                alert(`操作失败：${err}`);
+              }
+            });
+          });
+        } catch (err) {
+          console.error(err);
+          pane.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      // ── submissions ──────────────────────────────────────────────────
+      async function loadSubmissions() {
+        const pane = document.getElementById("pane-submissions")!;
+        try {
+          const res = await fetch("/v1/submissions/mine", { credentials: "same-origin" });
+          if (!res.ok) throw new Error(`/v1/submissions/mine ${res.status}`);
+          const { submissions } = (await res.json()) as { submissions: Submission[] };
+          const pending = submissions.filter((s) => s.status === "pending").length;
+          setBadge("badge-submissions", pending);
+          if (submissions.length === 0) {
+            pane.innerHTML = `<div class="empty-state"><span class="emoji">📤</span><p>还没提交过 skill。</p><p style="font-size:13px;">用 <code>sharon publish ./my-skill</code> 或在「待我决定」里发布。</p></div>`;
+            return;
+          }
+          pane.innerHTML = submissions.map((s) => {
+            const statusTag = s.status === "pending" ? '<span class="tag amber">⏳ 审批中</span>'
+                            : s.status === "approved" ? '<span class="tag green">✓ 已批准</span>'
+                            : '<span class="tag red">✗ 已拒绝</span>';
+            return `
+              <div class="row-card">
+                <div class="col-info">
+                  <h3>${escapeHtml(s.skillSlug)} ${statusTag} ${s.isNewSkill ? '<span class="tag purple">首发</span>' : ''}</h3>
+                  <p class="meta">提交于 ${fmt(s.submittedAt)}${s.rejectReason ? ` · 拒绝原因：${escapeHtml(s.rejectReason)}` : ""}</p>
+                </div>
+                <div class="actions">
+                  ${s.status === "approved" ? `<a class="btn ghost" href="/skills?slug=${encodeURIComponent(s.skillSlug)}">查看</a>` : ""}
+                </div>
+              </div>`;
+          }).join("");
+        } catch (err) {
+          console.error(err);
+          pane.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      // ── installs ─────────────────────────────────────────────────────
+      async function loadInstalls() {
+        const pane = document.getElementById("pane-installs")!;
+        try {
+          const res = await fetch("/v1/installs/mine", { credentials: "same-origin" });
+          if (!res.ok) throw new Error(`/v1/installs/mine ${res.status}`);
+          const { installs } = (await res.json()) as { installs: Install[] };
+          const active = installs.filter((i) => i.uninstalledAt === null);
+          setBadge("badge-installs", active.length);
+          if (active.length === 0) {
+            pane.innerHTML = `<div class="empty-state"><span class="emoji">📦</span><p>还没装过任何 skill。</p><p style="font-size:13px;">去 <a href="/browse">浏览页</a> 找一个一键装。</p></div>`;
+            return;
+          }
+          pane.innerHTML = active.map((i) => {
+            const forced = i.viaPushId !== null;
+            return `
+              <div class="row-card ${forced ? 'forced' : ''}">
+                <div class="col-info">
+                  <h3>
+                    ${escapeHtml(i.skillSlug)}
+                    ${forced ? '<span class="forced-badge">📌 Leader 推送</span>' : ''}
+                  </h3>
+                  <p class="meta">${fmt(i.installedAt)}装上 · 在 ~/.claude/skills/${escapeHtml(i.skillSlug)}/</p>
+                </div>
+                <div class="actions">
+                  <a class="btn ghost" href="/skills?slug=${encodeURIComponent(i.skillSlug)}">查看</a>
+                  <button class="btn danger" data-act="uninstall" data-slug="${escapeHtml(i.skillSlug)}">卸载</button>
+                </div>
+              </div>`;
+          }).join("");
+
+          pane.querySelectorAll<HTMLButtonElement>('button[data-act="uninstall"]').forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              const slug = btn.dataset["slug"]!;
+              if (!confirm(`确定卸载 ${slug}？`)) return;
+              btn.disabled = true;
+              try {
+                const r = await fetch(`/v1/installs/${encodeURIComponent(slug)}`, { method: "DELETE", credentials: "same-origin" });
+                if (!r.ok) throw new Error(`uninstall ${r.status}`);
+                showToast("已卸载");
+                await loadInstalls();
+              } catch (err) {
+                console.error(err); btn.disabled = false;
+                alert(`操作失败：${err}`);
+              }
+            });
+          });
+        } catch (err) {
+          console.error(err);
+          pane.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      load();
+    </script>
+  </body>
+</html>

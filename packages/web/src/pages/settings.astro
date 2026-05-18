@@ -1,0 +1,195 @@
+---
+import Header from "../components/Header.astro";
+import "../styles/tokens.css";
+---
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>设置 · Matrix-Sharon</title>
+    <style>
+      .setting-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 0; gap: 16px; border-top: 1px solid var(--border);
+      }
+      .setting-row:first-of-type { border-top: none; padding-top: 0; }
+      .sr-label { color: var(--fg-muted); font-size: 13px; flex-shrink: 0; min-width: 140px; }
+      .sr-value { color: var(--fg); font-size: 14px; flex: 1; word-break: break-all; }
+      .sr-action { flex-shrink: 0; }
+      .danger-zone { border: 1px solid var(--danger-soft); background: #fff8f8; }
+      .danger-zone h2 { color: var(--danger); margin-top: 0; }
+      .hint { color: var(--fg-faint); font-size: 12px; margin-top: 2px; }
+      body[data-role="member"] #leader-team-section { display: none; }
+    </style>
+  </head>
+  <body>
+    <Header active="settings" />
+    <main class="container">
+      <h1 class="h1">设置</h1>
+      <p class="subtitle">账号、本地 CLI、团队配置——一处管理。</p>
+
+      <h2 class="h2">账号</h2>
+      <div class="card" id="account-card">
+        <p style="color:var(--fg-faint);">加载中…</p>
+      </div>
+
+      <h2 class="h2">本地 Sharon CLI</h2>
+      <div class="card">
+        <div class="setting-row">
+          <span class="sr-label">CLI 安装状态</span>
+          <span class="sr-value">
+            <code>pnpm sharon --help</code> 验证可用。
+            <div class="hint">v1 通过 monorepo 内的 bin 调用。独立 npm 包将在 v1.x 发布。</div>
+          </span>
+        </div>
+        <div class="setting-row">
+          <span class="sr-label">候选扫描</span>
+          <span class="sr-value">
+            手动跑 <code>sharon scan</code> 触发。
+            <div class="hint">v1.1+ 加 fs-watch / cron 自动扫描。</div>
+          </span>
+        </div>
+        <div class="setting-row">
+          <span class="sr-label">本地安装目录</span>
+          <span class="sr-value"><code>~/.claude/skills/&lt;slug&gt;/</code></span>
+        </div>
+        <div class="setting-row">
+          <span class="sr-label">接收推送</span>
+          <span class="sr-value">
+            <code>sharon receive</code> 轮询 inbox 并自动安装 leader 推过来的 skill。
+            <div class="hint">v1 用 polling；v1.x 可能加 SSE / WebSocket。</div>
+          </span>
+        </div>
+        <div class="setting-row">
+          <span class="sr-label">SHARON_TOKEN</span>
+          <span class="sr-value">
+            从浏览器 DevTools → Application → Cookies → <code>sharon_session</code> 复制，export 给 CLI。
+            <div class="hint"><code>sharon login</code> 命令延后到 v1.x。</div>
+          </span>
+        </div>
+      </div>
+
+      <h2 class="h2" id="leader-team-section">团队配置 <span class="role-badge leader">leader</span></h2>
+      <div class="card" id="leader-team-section" style="margin-top:12px;">
+        <div class="setting-row">
+          <span class="sr-label">允许的 GitHub Org</span>
+          <span class="sr-value">
+            未限制（任何 GitHub 用户都可登录）
+            <div class="hint">v1.x 加 org / team 白名单（<code>team_config</code> 表已预留）。</div>
+          </span>
+        </div>
+        <div class="setting-row">
+          <span class="sr-label">成员数</span>
+          <span class="sr-value" id="member-count">加载中…</span>
+        </div>
+        <div class="setting-row">
+          <span class="sr-label">审批规则</span>
+          <span class="sr-value">所有上传必须 leader 批准 <span class="tag purple">已锁定</span></span>
+        </div>
+        <div class="setting-row">
+          <span class="sr-label">推送资源类型</span>
+          <span class="sr-value">
+            v1 仅 skill 可推。Viki 规则 / Workflow / Prompt 模板 <span class="tag">v1.x</span>
+          </span>
+        </div>
+      </div>
+
+      <h2 class="h2">危险操作</h2>
+      <div class="card danger-zone">
+        <div class="setting-row">
+          <div>
+            <div style="font-weight:600;color:var(--danger);">登出当前会话</div>
+            <div class="hint">本机 sharon CLI 仍然可用，需要重新 export SHARON_TOKEN。</div>
+          </div>
+          <button class="btn danger" id="logout-btn">登出</button>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div style="font-weight:600;color:var(--fg-muted);">注销账号</div>
+            <div class="hint">v1 暂未实现。需要先删除你在 SQLite 中的相关数据。</div>
+          </div>
+          <button class="btn" disabled>注销账号</button>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      type MeResponse = {
+        user: {
+          id: string; githubId: number; name: string;
+          email: string | null; avatarUrl: string | null;
+          role: "leader" | "member";
+        };
+      };
+
+      function escapeHtml(s: string): string {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+
+      async function load() {
+        const res = await fetch("/v1/me", { credentials: "same-origin" });
+        if (res.status === 401) {
+          location.href = `/login/github?returnTo=${encodeURIComponent("/settings")}`;
+          return;
+        }
+        if (!res.ok) {
+          (document.getElementById("account-card") as HTMLElement).innerHTML = `<p style="color:var(--danger)">/v1/me ${res.status}</p>`;
+          return;
+        }
+        const me = (await res.json()) as MeResponse;
+        document.body.setAttribute("data-role", me.user.role);
+        const u = me.user;
+        const card = document.getElementById("account-card")!;
+        card.innerHTML = `
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <img src="${u.avatarUrl || `https://github.com/${encodeURIComponent(u.id)}.png`}"
+                 onerror="this.style.display='none'"
+                 style="width:48px;height:48px;border-radius:50%;" alt="" />
+            <div>
+              <div style="font-weight:600;font-size:16px;">${escapeHtml(u.name)}</div>
+              <div style="color:var(--fg-muted);font-size:13px;">@${escapeHtml(u.id)}</div>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="sr-label">GitHub ID</span>
+            <span class="sr-value">${u.githubId}</span>
+          </div>
+          <div class="setting-row">
+            <span class="sr-label">通知邮箱</span>
+            <span class="sr-value">${u.email ? escapeHtml(u.email) : '<span class="hint">未提供（dev login 模式不读邮箱）</span>'}</span>
+          </div>
+          <div class="setting-row">
+            <span class="sr-label">角色</span>
+            <span class="sr-value">
+              <span class="role-badge ${u.role}">${u.role}</span>
+              <span class="hint" style="display:inline;margin-left:8px;">
+                ${u.role === "leader" ? "你是 leader——审批 / 推送权限已开放。" : "如需变更角色请联系 leader。"}
+              </span>
+            </span>
+          </div>
+        `;
+
+        if (u.role === "leader") {
+          try {
+            const ur = await fetch("/v1/users", { credentials: "same-origin" });
+            if (ur.ok) {
+              const { users } = (await ur.json()) as { users: Array<{ role: string }> };
+              const n = users.length;
+              const leaders = users.filter((x) => x.role === "leader").length;
+              document.getElementById("member-count")!.innerHTML =
+                `${n} 人（${leaders} leader / ${n - leaders} member）`;
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      document.getElementById("logout-btn")!.addEventListener("click", async () => {
+        if (!confirm("确定登出？")) return;
+        await fetch("/auth/logout", { method: "POST", credentials: "same-origin" });
+        location.href = "/";
+      });
+
+      load();
+    </script>
+  </body>
+</html>

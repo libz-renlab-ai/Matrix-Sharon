@@ -117,6 +117,12 @@ export async function registerSubmissionRoutes(app: FastifyInstance): Promise<vo
     return { submissions };
   }));
 
+  // Current user's own submissions (all statuses). Backs the "我发布的" tab.
+  app.get("/v1/submissions/mine", withAuth(async (_req, _reply, _session, user) => {
+    const submissions = await app.ctx.submissionStore.listBySubmitter(user.id);
+    return { submissions };
+  }));
+
   app.post<{ Params: { id: string } }>(
     "/v1/submissions/:id/approve",
     withLeader(async (req, reply, _session, user) => {

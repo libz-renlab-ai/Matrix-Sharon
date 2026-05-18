@@ -1,5 +1,6 @@
 ---
 import Header from "../../components/Header.astro";
+import "../../styles/tokens.css";
 ---
 <html lang="zh-CN">
   <head>
@@ -7,37 +8,23 @@ import Header from "../../components/Header.astro";
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>待我决定 · Matrix-Sharon</title>
     <style>
-      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
-      main { padding: 32px 24px; max-width: 1080px; margin: 0 auto; }
-      h1 { margin: 0 0 8px; }
-      .lead { color: #5c6678; margin: 0 0 24px; font-size: 14px; }
-      .row {
-        background: #fff; border: 1px solid #e6e8ee; border-radius: 8px; padding: 16px;
-        margin-bottom: 12px; display: flex; gap: 16px; align-items: flex-start;
-      }
-      .row .col-info { flex: 1; }
-      .row h3 { margin: 0 0 4px; font-size: 15px; }
-      .row .reason { color: #5c6678; font-size: 13px; margin: 0; }
-      .row .time { color: #8b91a0; font-size: 12px; margin: 4px 0 0; }
-      .actions { display: flex; gap: 8px; flex-shrink: 0; }
-      .btn {
-        font: inherit; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none;
-      }
-      .btn-primary { background: #5b5bd6; color: #fff; }
-      .btn-primary:hover { background: #4747b3; }
-      .btn-ghost { background: transparent; border: 1px solid #d0d4dc; color: #5c6678; }
-      .btn-ghost:hover { border-color: #b2b7c0; color: #1d2433; }
-      .err { background: #fff3f3; color: #c33d3d; border: 1px solid #f7caca; padding: 12px; border-radius: 6px; }
-      .empty { text-align: center; padding: 48px 24px; color: #5c6678; }
+      .candidate-card { margin-bottom: 14px; }
+      .candidate-head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+      .candidate-head .col-info { flex: 1; min-width: 0; }
+      .candidate-head h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+      .candidate-head .reason { color: var(--fg-muted); font-size: 13px; margin: 0; line-height: 1.5; }
+      .candidate-head .time { color: var(--fg-faint); font-size: 12px; margin: 6px 0 0; }
+      .candidate-actions { display: flex; gap: 8px; flex-shrink: 0; }
+      .err { background: var(--danger-soft); color: var(--danger); border: 1px solid #f7caca; padding: 12px; border-radius: 6px; }
     </style>
   </head>
   <body>
-    <Header />
-    <main>
-      <h1>待我决定</h1>
-      <p class="lead">本地 scanner 发现的候选 skill。选「发布候选」会进入 leader 审批队列。</p>
+    <Header active="me" />
+    <main class="container">
+      <h1 class="h1">待我决定</h1>
+      <p class="subtitle">本地 scanner（<code>sharon scan</code>）发现的候选 skill。选「发布候选」会进入 leader 审批队列；「忽略」会让该候选不再出现。</p>
       <div id="list" aria-live="polite">
-        <p style="color:#b2b7c0;">加载中…</p>
+        <p style="color:var(--fg-faint);">加载中…</p>
       </div>
     </main>
 
@@ -48,6 +35,8 @@ import Header from "../../components/Header.astro";
         skillSlug: string;
         detectedAt: number;
         reason: string;
+        diffUnified: string | null;
+        fullContentMd: string;
       };
 
       const list = document.getElementById("list")!;
@@ -58,6 +47,15 @@ import Header from "../../components/Header.astro";
       function fmt(ms: number): string {
         const d = new Date(ms);
         return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}`;
+      }
+      function renderDiff(diff: string): string {
+        return diff.split("\n").map((line) => {
+          let cls = "ctx";
+          if (line.startsWith("@@"))      cls = "hunk";
+          else if (line.startsWith("+"))  cls = "add";
+          else if (line.startsWith("-"))  cls = "del";
+          return `<div class="diff-line ${cls}">${escapeHtml(line || " ")}</div>`;
+        }).join("");
       }
 
       async function load() {
@@ -79,30 +77,37 @@ import Header from "../../components/Header.astro";
       function render(items: Candidate[]) {
         if (items.length === 0) {
           list.innerHTML = `
-            <div class="empty">
+            <div class="empty-state">
+              <span class="emoji">✓</span>
               <p>当前没有待决定的候选 skill。</p>
-              <p style="font-size:13px;">Phase 5 接入本地 scanner 后，新建的 skill 会自动出现在这里。现在可用 sharon publish 直接提交。</p>
-            </div>
-          `;
+              <p style="font-size:13px;color:var(--fg-faint);">跑 <code>sharon scan</code> 扫描本地 <code>~/.claude/skills/</code>，或直接用 <code>sharon publish</code> 提交。</p>
+            </div>`;
           return;
         }
-        list.innerHTML = items.map((c) => `
-          <div class="row" data-id="${c.id}">
-            <div class="col-info">
-              <h3>${escapeHtml(c.skillSlug)}</h3>
-              <p class="reason">${escapeHtml(c.reason)}</p>
-              <p class="time">${fmt(c.detectedAt)}</p>
-            </div>
-            <div class="actions">
-              <button class="btn btn-primary" data-act="submit">发布候选 →</button>
-              <button class="btn btn-ghost" data-act="dismiss">忽略</button>
-            </div>
-          </div>
-        `).join("");
+        list.innerHTML = items.map((c) => {
+          const preview = c.diffUnified
+            ? `<div class="diff-box">${renderDiff(c.diffUnified)}</div>`
+            : `<div class="diff-box">${escapeHtml(c.fullContentMd)}</div>`;
+          return `
+            <div class="card candidate-card" data-id="${c.id}">
+              <div class="candidate-head">
+                <div class="col-info">
+                  <h3>${escapeHtml(c.skillSlug)}</h3>
+                  <p class="reason">${escapeHtml(c.reason)}</p>
+                  <p class="time">${fmt(c.detectedAt)}</p>
+                </div>
+                <div class="candidate-actions">
+                  <button class="btn primary" data-act="submit">发布候选 →</button>
+                  <button class="btn ghost" data-act="dismiss">忽略</button>
+                </div>
+              </div>
+              ${preview}
+            </div>`;
+        }).join("");
 
         list.querySelectorAll<HTMLButtonElement>(".btn").forEach((btn) => {
           btn.addEventListener("click", async () => {
-            const row = btn.closest<HTMLDivElement>(".row");
+            const row = btn.closest<HTMLDivElement>(".candidate-card");
             if (!row) return;
             const id = row.dataset["id"]!;
             const act = btn.dataset["act"];
@@ -110,18 +115,18 @@ import Header from "../../components/Header.astro";
             try {
               if (act === "submit") {
                 const r = await fetch("/v1/submissions", {
-                  method: "POST",
-                  credentials: "same-origin",
+                  method: "POST", credentials: "same-origin",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ candidateId: id }),
                 });
                 if (!r.ok) throw new Error(`submit ${r.status}: ${await r.text()}`);
+                showToast("已提交到 leader 审批队列");
               } else if (act === "dismiss") {
                 const r = await fetch(`/v1/candidates/${encodeURIComponent(id)}`, {
-                  method: "DELETE",
-                  credentials: "same-origin",
+                  method: "DELETE", credentials: "same-origin",
                 });
                 if (!r.ok) throw new Error(`dismiss ${r.status}`);
+                showToast("已忽略");
               }
               row.remove();
               if (list.children.length === 0) render([]);
@@ -132,6 +137,14 @@ import Header from "../../components/Header.astro";
             }
           });
         });
+      }
+
+      function showToast(msg: string) {
+        const t = document.createElement("div");
+        t.className = "toast";
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 2200);
       }
 
       load();

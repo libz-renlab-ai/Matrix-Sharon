@@ -1,52 +1,97 @@
 ---
-// Server-rendered shell; the auth slot is filled by a tiny script that
-// fetches /v1/me on the client. Phase 2 keeps this purely static —
-// Phase 3 may move to cookie-aware SSR.
+const { active } = Astro.props as { active?: string };
 ---
-<header class="sharon-header">
+<header class="topbar">
   <a class="brand" href="/">
-    <span class="brand-mark">🧩</span>
+    <span class="brand-mark">S</span>
     <span class="brand-name">Matrix-Sharon</span>
     <span class="brand-sub">团队技能集市</span>
   </a>
-  <div id="auth-slot" class="auth-slot" aria-live="polite">
+  <nav class="nav" id="topnav">
+    <a href="/browse"        data-nav="browse"  class:list={[active === "browse"  && "active"]}>浏览</a>
+    <a href="/me"            data-nav="me"      class:list={[active === "me"      && "active"]}>个人中心</a>
+    <a href="/leader/queue"  data-nav="leader-queue"  class:list={["leader-only", active === "leader-queue"  && "active"]}>审批队列 <span id="nav-pending-badge" class="nav-badge" hidden></span></a>
+    <a href="/leader/pushes" data-nav="leader-pushes" class:list={["leader-only", active === "leader-pushes" && "active"]}>推送留存</a>
+    <a href="/settings"      data-nav="settings" class:list={[active === "settings" && "active"]}>设置</a>
+  </nav>
+  <div id="auth-slot" class="topbar-right" aria-live="polite">
     <span class="auth-loading">…</span>
   </div>
 </header>
 
 <style>
-  .sharon-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 24px;
-    background: #fff;
-    border-bottom: 1px solid #e6e8ee;
-    font: 14px/1.4 -apple-system, "PingFang SC", sans-serif;
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px;
+    gap: 32px;
   }
-  .brand { display: flex; align-items: baseline; gap: 8px; color: #1d2433; text-decoration: none; }
-  .brand-mark { font-size: 20px; }
-  .brand-name { font-weight: 600; }
-  .brand-sub { color: #5c6678; font-size: 12px; }
-  .auth-slot { min-height: 24px; display: flex; align-items: center; gap: 8px; }
-  .auth-loading { color: #b2b7c0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; color: var(--fg); }
+  .brand-mark {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #7d7df5, #5b5bd6);
+    border-radius: 7px;
+    display: grid; place-items: center;
+    color: #fff; font-weight: 800; font-size: 14px;
+    letter-spacing: -0.5px;
+    box-shadow: var(--shadow-sm);
+  }
+  .brand-name { font-weight: 700; }
+  .brand-sub {
+    font-weight: 500;
+    color: var(--fg-faint);
+    font-size: 13px;
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+    margin-left: 4px;
+  }
+  .nav { display: flex; gap: 4px; flex: 1; }
+  .nav a {
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--fg-muted);
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.12s, color 0.12s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .nav a:hover { background: var(--surface-2); color: var(--fg); }
+  .nav a.active { background: var(--primary-soft); color: var(--primary); }
+  .nav a.leader-only { display: none; }
+  body[data-role="leader"] .nav a.leader-only { display: inline-flex; }
+  .nav-badge {
+    background: var(--warning);
+    color: #fff;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .auth-loading { color: var(--fg-faint); }
   .auth-signin {
-    background: #5b5bd6; color: #fff; padding: 6px 12px; border-radius: 6px;
-    text-decoration: none; font-weight: 500;
+    background: var(--primary); color: #fff; padding: 6px 12px; border-radius: var(--radius-sm);
+    font-weight: 500; font-size: 13px;
   }
-  .auth-signin:hover { background: #4747b3; }
+  .auth-signin:hover { background: var(--primary-hover); }
+  .auth-dev {
+    background: var(--accent); color: #fff; padding: 6px 12px; border-radius: var(--radius-sm);
+    font-weight: 500; font-size: 13px;
+  }
   .auth-user { display: flex; align-items: center; gap: 8px; }
-  .auth-avatar { width: 24px; height: 24px; border-radius: 50%; }
-  .auth-name { color: #1d2433; }
-  .auth-role {
-    font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eef0f5; color: #5c6678;
-  }
-  .auth-role[data-role="leader"] { background: #fff4e0; color: #c67a00; }
+  .auth-avatar { width: 28px; height: 28px; border-radius: 50%; }
+  .auth-name { color: var(--fg); font-size: 13px; font-weight: 500; }
   .auth-signout {
-    background: transparent; border: 1px solid #d0d4dc; color: #5c6678;
-    padding: 4px 10px; border-radius: 6px; cursor: pointer; font: inherit;
+    background: transparent; border: 1px solid var(--border-strong); color: var(--fg-muted);
+    padding: 4px 10px; border-radius: var(--radius-sm); font-size: 12px;
   }
-  .auth-signout:hover { border-color: #b2b7c0; color: #1d2433; }
+  .auth-signout:hover { border-color: var(--border-strong); color: var(--fg); background: var(--surface-2); }
 </style>
 
 <script>
@@ -61,6 +106,25 @@
     };
   };
 
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  async function refreshPendingBadge(role: "leader" | "member"): Promise<void> {
+    if (role !== "leader") return;
+    const badge = document.getElementById("nav-pending-badge");
+    if (!badge) return;
+    try {
+      const r = await fetch("/v1/submissions/pending", { credentials: "same-origin" });
+      if (!r.ok) return;
+      const { items } = (await r.json()) as { items: unknown[] };
+      if (items.length === 0) { badge.hidden = true; return; }
+      badge.hidden = false;
+      badge.textContent = String(items.length);
+    } catch { /* ignore */ }
+  }
+
   const slot = document.getElementById("auth-slot");
   if (slot) {
     fetch("/v1/me", { credentials: "same-origin" })
@@ -69,13 +133,18 @@
         if (!res.ok) throw new Error(`/v1/me returned ${res.status}`);
         return (await res.json()) as MeOk;
       })
-      .then((me) => {
+      .then(async (me) => {
         if (!me) {
-          slot.innerHTML =
-            '<a class="auth-signin" href="/login/github">使用 GitHub 登录</a>';
+          const devProbe = await fetch("/dev-login/", { method: "HEAD" });
+          const devEnabled = devProbe.ok;
+          slot.innerHTML = devEnabled
+            ? '<a class="auth-dev" href="/dev-login/">Dev 登录</a>'
+              + '<a class="auth-signin" href="/login/github">GitHub 登录</a>'
+            : '<a class="auth-signin" href="/login/github">使用 GitHub 登录</a>';
           return;
         }
         const u = me.user;
+        document.body.setAttribute("data-role", u.role);
         const avatar = u.avatarUrl
           ? `<img class="auth-avatar" src="${u.avatarUrl}" alt="" />`
           : "";
@@ -83,7 +152,7 @@
           <div class="auth-user">
             ${avatar}
             <span class="auth-name">${escapeHtml(u.name)}</span>
-            <span class="auth-role" data-role="${u.role}">${u.role}</span>
+            <span class="role-badge ${u.role}">${u.role}</span>
             <button class="auth-signout" type="button" id="auth-signout">登出</button>
           </div>
         `;
@@ -91,19 +160,11 @@
           await fetch("/auth/logout", { method: "POST", credentials: "same-origin" });
           location.reload();
         });
+        await refreshPendingBadge(u.role);
       })
       .catch((err) => {
         console.error(err);
         slot.textContent = "登录状态加载失败";
       });
-  }
-
-  function escapeHtml(s: string): string {
-    return s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
   }
 </script>

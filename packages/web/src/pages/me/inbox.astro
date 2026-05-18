@@ -1,5 +1,6 @@
 ---
 import Header from "../../components/Header.astro";
+import "../../styles/tokens.css";
 ---
 <html lang="zh-CN">
   <head>
@@ -44,7 +45,7 @@ import Header from "../../components/Header.astro";
     </style>
   </head>
   <body>
-    <Header />
+    <Header active="me" />
     <main>
       <h1>我的推送</h1>
       <p class="lead">Leader 推送给你的 skill 出现在这里。装好后点「我已了解」让 leader 知道你收到了。</p>

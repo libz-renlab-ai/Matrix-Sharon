@@ -1,5 +1,6 @@
 ---
 import Header from "../../components/Header.astro";
+import "../../styles/tokens.css";
 ---
 <html lang="zh-CN">
   <head>
@@ -7,80 +8,68 @@ import Header from "../../components/Header.astro";
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>审批队列 · Matrix-Sharon</title>
     <style>
-      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
-      main { padding: 32px 24px; max-width: 1080px; margin: 0 auto; }
-      h1 { margin: 0 0 8px; }
-      .lead { color: #5c6678; margin: 0 0 24px; font-size: 14px; }
-
-      .card {
-        background: #fff; border: 1px solid #e6e8ee; border-radius: 8px; padding: 16px 20px;
-        margin-bottom: 14px;
+      .queue-toolbar {
+        display: flex; align-items: center; justify-content: space-between;
+        background: var(--warning-soft); border: 1px solid #ffe6c2;
+        border-radius: var(--radius); padding: 14px 18px;
+        margin-bottom: 20px; color: #8a5a00; font-size: 14px;
       }
-      .card h3 { margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
-      .badge {
-        font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #fff4e0; color: #c67a00;
-      }
-      .badge-new { background: #e7f7ef; color: #00a47c; }
-      .meta { color: #8b91a0; font-size: 12px; margin: 0 0 12px; }
-      .preview {
-        background: #f0f1f5; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px;
-        font-family: ui-monospace, Menlo, monospace; font-size: 12px;
-        max-height: 220px; overflow-y: auto; white-space: pre-wrap;
-      }
-      .actions { display: flex; gap: 8px; }
-      .btn { font: inherit; padding: 6px 14px; border-radius: 6px; cursor: pointer; border: none; }
-      .btn-ok { background: #00a47c; color: #fff; }
-      .btn-ok:hover { background: #008a68; }
-      .btn-no { background: transparent; border: 1px solid #c33d3d; color: #c33d3d; }
-      .btn-no:hover { background: #fff3f3; }
-      .err { background: #fff3f3; color: #c33d3d; border: 1px solid #f7caca; padding: 12px; border-radius: 6px; }
-      .leader-only { text-align: center; padding: 48px 24px; color: #5c6678; }
+      .pending-item { margin-bottom: 14px; }
+      .pending-head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+      .pending-head .col-info { flex: 1; min-width: 0; }
+      .pending-head h3 { margin: 0 0 4px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+      .pending-head .pending-meta { color: var(--fg-muted); font-size: 13px; margin: 0; line-height: 1.5; }
+      .pending-actions { display: flex; gap: 8px; flex-shrink: 0; }
+      .err { background: var(--danger-soft); color: var(--danger); border: 1px solid #f7caca; padding: 12px; border-radius: 6px; }
+      .leader-only-empty { text-align: center; padding: 48px 24px; color: var(--fg-muted); }
     </style>
   </head>
   <body>
-    <Header />
-    <main>
-      <h1>审批队列</h1>
-      <p class="lead">leader 视图。批准 = 生成不可变版本并打包 bundle；拒绝必填理由。</p>
+    <Header active="leader-queue" />
+    <main class="container">
+      <h1 class="h1">审批队列</h1>
+      <p class="subtitle">leader 视角。通过 = 自动生成不可变版本 + 打包 <code>bundle.tgz</code>，立即对所有人可见可装。拒绝必填理由。</p>
+
+      <div id="queue-toolbar-host"></div>
       <div id="queue" aria-live="polite">
-        <p style="color:#b2b7c0;">加载中…</p>
+        <p style="color:var(--fg-faint);">加载中…</p>
       </div>
     </main>
 
     <script>
       type Submission = {
-        id: string;
-        skillSlug: string;
-        isNewSkill: boolean;
-        bundleSha256: string;
-        bundleSize: number;
-        rawSkillMd: string;
-        submitterId: string;
-        submittedAt: number;
-        status: string;
+        id: string; skillSlug: string; isNewSkill: boolean;
+        bundleSha256: string; bundleSize: number; rawSkillMd: string;
+        submitterId: string; submittedAt: number; status: string;
       };
 
       const queue = document.getElementById("queue")!;
+      const toolbarHost = document.getElementById("queue-toolbar-host")!;
 
       function escapeHtml(s: string): string {
         return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
       }
       function fmt(ms: number): string {
-        return new Date(ms).toISOString().replace("T", " ").slice(0, 16);
+        const days = Math.floor((Date.now() - ms) / 86400000);
+        if (days === 0) {
+          const h = Math.floor((Date.now() - ms) / 3600000);
+          if (h === 0) return `${Math.floor((Date.now() - ms) / 60000)} 分钟前`;
+          return `${h} 小时前`;
+        }
+        if (days === 1) return "昨天";
+        return `${days} 天前`;
+      }
+      function showToast(msg: string) {
+        const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+        document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
       }
 
       async function load() {
         try {
           const res = await fetch("/v1/submissions/pending", { credentials: "same-origin" });
-          if (res.status === 401) {
-            location.href = `/login/github?returnTo=${encodeURIComponent("/leader/queue")}`;
-            return;
-          }
+          if (res.status === 401) { location.href = `/login/github?returnTo=${encodeURIComponent("/leader/queue")}`; return; }
           if (res.status === 403) {
-            queue.innerHTML = `<div class="leader-only">
-              <p>只有 leader 才能访问审批队列。</p>
-              <p><a href="/browse">回到浏览</a></p>
-            </div>`;
+            queue.innerHTML = `<div class="leader-only-empty"><p>只有 leader 才能访问审批队列。</p><p><a href="/browse" class="btn">回到浏览</a></p></div>`;
             return;
           }
           if (!res.ok) throw new Error(`/v1/submissions/pending ${res.status}`);
@@ -94,28 +83,33 @@ import Header from "../../components/Header.astro";
 
       function render(items: Submission[]) {
         if (items.length === 0) {
-          queue.innerHTML = `<div class="leader-only"><p>当前没有待审批的提交。</p></div>`;
+          toolbarHost.innerHTML = "";
+          queue.innerHTML = `<div class="empty-state"><span class="emoji">✓</span><p>队列已清空 · leader 的最高境界</p></div>`;
           return;
         }
+        toolbarHost.innerHTML = `<div class="queue-toolbar">⏳ 待审 <b>${items.length}</b> 个提交。等你 review。</div>`;
         queue.innerHTML = items.map((s) => `
-          <div class="card" data-id="${s.id}">
-            <h3>
-              ${escapeHtml(s.skillSlug)}
-              <span class="badge ${s.isNewSkill ? "badge-new" : ""}">${s.isNewSkill ? "新 skill" : "新版本"}</span>
-            </h3>
-            <p class="meta">@${escapeHtml(s.submitterId)} · ${fmt(s.submittedAt)} · sha=${s.bundleSha256.slice(0, 12)}…</p>
-            <pre class="preview">${escapeHtml(s.rawSkillMd)}</pre>
-            <div class="actions">
-              <button class="btn btn-ok" data-act="approve">通过</button>
-              <button class="btn btn-no" data-act="reject">拒绝</button>
+          <div class="card pending-item" data-id="${s.id}">
+            <div class="pending-head">
+              <div class="col-info">
+                <h3>
+                  ${escapeHtml(s.skillSlug)}
+                  <span class="tag ${s.isNewSkill ? 'green' : 'amber'}">${s.isNewSkill ? '首发' : '新版本'}</span>
+                </h3>
+                <p class="pending-meta">提交人 @${escapeHtml(s.submitterId)} · ${fmt(s.submittedAt)} · bundle <code>${s.bundleSha256.slice(0, 12)}…</code> (${(s.bundleSize / 1024).toFixed(1)} KB)</p>
+              </div>
+              <div class="pending-actions">
+                <button class="btn success" data-act="approve">通过</button>
+                <button class="btn danger" data-act="reject">拒绝</button>
+              </div>
             </div>
+            <div class="diff-box">${escapeHtml(s.rawSkillMd)}</div>
           </div>
         `).join("");
 
         queue.querySelectorAll<HTMLButtonElement>(".btn").forEach((btn) => {
           btn.addEventListener("click", async () => {
-            const card = btn.closest<HTMLDivElement>(".card");
-            if (!card) return;
+            const card = btn.closest<HTMLDivElement>(".pending-item")!;
             const id = card.dataset["id"]!;
             const act = btn.dataset["act"];
             if (act === "approve") {
@@ -123,39 +117,34 @@ import Header from "../../components/Header.astro";
               btn.disabled = true;
               try {
                 const r = await fetch(`/v1/submissions/${encodeURIComponent(id)}/approve`, {
-                  method: "POST",
-                  credentials: "same-origin",
+                  method: "POST", credentials: "same-origin",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(note ? { note } : {}),
                 });
                 if (!r.ok) throw new Error(`approve ${r.status}: ${await r.text()}`);
+                showToast("✓ 已通过，版本已生成");
                 card.remove();
-                if (queue.children.length === 0) render([]);
-              } catch (err) {
-                btn.disabled = false;
-                alert(`通过失败：${err}`);
-              }
+                const remaining = queue.querySelectorAll(".pending-item").length;
+                if (remaining === 0) render([]);
+                else toolbarHost.innerHTML = `<div class="queue-toolbar">⏳ 待审 <b>${remaining}</b> 个提交。</div>`;
+              } catch (err) { btn.disabled = false; alert(`通过失败：${err}`); }
             } else if (act === "reject") {
               const reason = window.prompt("拒绝理由（必填）：");
-              if (!reason || reason.trim().length === 0) {
-                alert("理由不能为空");
-                return;
-              }
+              if (!reason || reason.trim().length === 0) { alert("理由不能为空"); return; }
               btn.disabled = true;
               try {
                 const r = await fetch(`/v1/submissions/${encodeURIComponent(id)}/reject`, {
-                  method: "POST",
-                  credentials: "same-origin",
+                  method: "POST", credentials: "same-origin",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ reason }),
                 });
                 if (!r.ok) throw new Error(`reject ${r.status}: ${await r.text()}`);
+                showToast("已拒绝");
                 card.remove();
-                if (queue.children.length === 0) render([]);
-              } catch (err) {
-                btn.disabled = false;
-                alert(`拒绝失败：${err}`);
-              }
+                const remaining = queue.querySelectorAll(".pending-item").length;
+                if (remaining === 0) render([]);
+                else toolbarHost.innerHTML = `<div class="queue-toolbar">⏳ 待审 <b>${remaining}</b> 个提交。</div>`;
+              } catch (err) { btn.disabled = false; alert(`拒绝失败：${err}`); }
             }
           });
         });

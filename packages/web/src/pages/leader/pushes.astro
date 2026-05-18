@@ -1,5 +1,6 @@
 ---
 import Header from "../../components/Header.astro";
+import "../../styles/tokens.css";
 ---
 <html lang="zh-CN">
   <head>
@@ -52,8 +53,8 @@ import Header from "../../components/Header.astro";
     </style>
   </head>
   <body>
-    <Header />
-    <main>
+    <Header active="leader-pushes" />
+    <main class="container">
       <h1>我推送的</h1>
       <p class="lead">看看你推送的 skill 装上了没、有没有人卸了。留存率 = 当前仍在用的成员 / 装过它的成员。</p>
       <div id="list" aria-live="polite">

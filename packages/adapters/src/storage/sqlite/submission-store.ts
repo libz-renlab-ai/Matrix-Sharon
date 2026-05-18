@@ -77,6 +77,15 @@ export class SqliteSubmissionStore implements SubmissionStore {
     return rows.map(rowToSubmission);
   }
 
+  async listBySubmitter(submitterId: string): Promise<PendingSubmission[]> {
+    const rows = this.db
+      .prepare(
+        "SELECT * FROM pending_submissions WHERE submitter_id = ? ORDER BY submitted_at DESC"
+      )
+      .all(submitterId) as Row[];
+    return rows.map(rowToSubmission);
+  }
+
   async setStatus(
     id: string,
     params: {
