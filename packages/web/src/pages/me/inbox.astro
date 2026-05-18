@@ -1,0 +1,188 @@
+---
+import Header from "../../components/Header.astro";
+---
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>我的推送 · Matrix-Sharon</title>
+    <style>
+      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
+      main { padding: 32px 24px; max-width: 1080px; margin: 0 auto; }
+      h1 { margin: 0 0 8px; }
+      .lead { color: #5c6678; margin: 0 0 24px; font-size: 14px; }
+      .row {
+        background: #fff; border: 1px solid #e6e8ee; border-radius: 8px; padding: 16px;
+        margin-bottom: 12px; display: flex; gap: 16px; align-items: flex-start;
+      }
+      .row .col-info { flex: 1; min-width: 0; }
+      .row h3 { margin: 0 0 4px; font-size: 15px; }
+      .row .reason { color: #5c6678; font-size: 13px; margin: 0; }
+      .row .meta { color: #8b91a0; font-size: 12px; margin: 6px 0 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+      .row .leader { color: #5c6678; }
+      .actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+      .btn {
+        font: inherit; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none;
+      }
+      .btn-primary { background: #5b5bd6; color: #fff; }
+      .btn-primary:hover { background: #4747b3; }
+      .btn-ghost { background: transparent; border: 1px solid #d0d4dc; color: #5c6678; text-decoration: none; display: inline-block; }
+      .btn-ghost:hover { border-color: #b2b7c0; color: #1d2433; }
+      .btn:disabled { opacity: 0.6; cursor: default; }
+      .err { background: #fff3f3; color: #c33d3d; border: 1px solid #f7caca; padding: 12px; border-radius: 6px; }
+      .empty { text-align: center; padding: 48px 24px; color: #5c6678; }
+
+      .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+      .pill-pending { background: #fff4e0; color: #c67a00; }
+      .pill-installed { background: #e3f6ef; color: #00a47c; }
+      .pill-failed { background: #fff3f3; color: #c33d3d; }
+      .pill-uninstalled { background: #eef0f5; color: #5c6678; }
+
+      .hint { color: #8b91a0; font-size: 12px; }
+      .fail-reason { color: #c33d3d; font-size: 12px; margin: 4px 0 0; }
+      .ack-done { color: #5c6678; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <Header />
+    <main>
+      <h1>我的推送</h1>
+      <p class="lead">Leader 推送给你的 skill 出现在这里。装好后点「我已了解」让 leader 知道你收到了。</p>
+      <div id="list" aria-live="polite">
+        <p style="color:#b2b7c0;">加载中…</p>
+      </div>
+    </main>
+
+    <script>
+      type Push = {
+        id: string;
+        kind: string;
+        skillSlug: string;
+        skillVersionId: string;
+        fromLeaderId: string;
+        reason: string;
+        pushedAt: number;
+      };
+      type ReceiptStatus = "pending" | "installed" | "failed" | "uninstalled";
+      type Receipt = {
+        pushId: string;
+        recipientId: string;
+        status: ReceiptStatus;
+        statusChangedAt: number;
+        failReason: string | null;
+        acknowledged: boolean;
+      };
+      type InboxItem = { push: Push; receipt: Receipt };
+
+      const STATUS_LABEL: Record<ReceiptStatus, string> = {
+        pending: "待安装",
+        installed: "已安装",
+        failed: "失败",
+        uninstalled: "已卸载",
+      };
+
+      const list = document.getElementById("list")!;
+
+      function escapeHtml(s: string): string {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function fmt(ms: number): string {
+        const d = new Date(ms);
+        return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}`;
+      }
+
+      async function load() {
+        try {
+          const res = await fetch("/v1/pushes/inbox", { credentials: "same-origin" });
+          if (res.status === 401) {
+            location.href = `/login/github?returnTo=${encodeURIComponent("/me/inbox")}`;
+            return;
+          }
+          if (!res.ok) throw new Error(`/v1/pushes/inbox ${res.status}`);
+          const body = (await res.json()) as { items: InboxItem[] };
+          render(body.items);
+        } catch (err) {
+          console.error(err);
+          list.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      function renderStatus(receipt: Receipt): string {
+        const label = STATUS_LABEL[receipt.status];
+        const pill = `<span class="pill pill-${receipt.status}">${escapeHtml(label)}</span>`;
+        if (receipt.status === "pending") {
+          return `${pill}<span class="hint">（等本机 sharon receive 来安装）</span>`;
+        }
+        if (receipt.status === "installed") {
+          return `${pill}<span class="hint">✓ 已安装</span>`;
+        }
+        return pill;
+      }
+
+      function render(items: InboxItem[]) {
+        if (items.length === 0) {
+          list.innerHTML = `
+            <div class="empty">
+              <p>暂时没有 leader 推送给你的 skill。</p>
+              <p style="font-size:13px;">当 leader 把某个版本推给你时，会出现在这里。</p>
+            </div>
+          `;
+          return;
+        }
+        list.innerHTML = items.map((it) => {
+          const { push, receipt } = it;
+          const failBlock = receipt.status === "failed" && receipt.failReason
+            ? `<p class="fail-reason">失败原因：${escapeHtml(receipt.failReason)}</p>`
+            : "";
+          const ackBlock = receipt.acknowledged
+            ? `<span class="ack-done">已了解</span>`
+            : `<button class="btn btn-primary" data-act="ack">我已了解</button>`;
+          return `
+            <div class="row" data-push-id="${escapeHtml(push.id)}">
+              <div class="col-info">
+                <h3>${escapeHtml(push.skillSlug)}</h3>
+                <p class="reason">${escapeHtml(push.reason)}</p>
+                ${failBlock}
+                <div class="meta">
+                  <span class="leader">@${escapeHtml(push.fromLeaderId)}</span>
+                  <span>${fmt(push.pushedAt)}</span>
+                  ${renderStatus(receipt)}
+                </div>
+              </div>
+              <div class="actions">
+                ${ackBlock}
+                <a class="btn btn-ghost" href="/skills?slug=${encodeURIComponent(push.skillSlug)}">查看</a>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        list.querySelectorAll<HTMLButtonElement>('button[data-act="ack"]').forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const row = btn.closest<HTMLDivElement>(".row");
+            if (!row) return;
+            const pushId = row.dataset["pushId"]!;
+            btn.disabled = true;
+            try {
+              const r = await fetch(`/v1/pushes/${encodeURIComponent(pushId)}/acknowledge`, {
+                method: "POST",
+                credentials: "same-origin",
+              });
+              if (!r.ok) throw new Error(`acknowledge ${r.status}: ${await r.text()}`);
+              const span = document.createElement("span");
+              span.className = "ack-done";
+              span.textContent = "已了解";
+              btn.replaceWith(span);
+            } catch (err) {
+              console.error(err);
+              btn.disabled = false;
+              alert(`操作失败：${err}`);
+            }
+          });
+        });
+      }
+
+      load();
+    </script>
+  </body>
+</html>

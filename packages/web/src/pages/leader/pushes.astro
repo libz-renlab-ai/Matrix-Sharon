@@ -1,0 +1,191 @@
+---
+import Header from "../../components/Header.astro";
+---
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>我推送的 · Matrix-Sharon</title>
+    <style>
+      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
+      main { padding: 32px 24px; max-width: 1080px; margin: 0 auto; }
+      h1 { margin: 0 0 8px; }
+      .lead { color: #5c6678; margin: 0 0 24px; font-size: 14px; }
+
+      .card {
+        background: #fff; border: 1px solid #e6e8ee; border-radius: 8px; padding: 16px 20px;
+        margin-bottom: 14px;
+      }
+      .card h3 { margin: 0 0 6px; display: flex; align-items: center; gap: 8px; font-size: 15px; }
+      .ver-pill { background: #eef0f5; padding: 2px 8px; border-radius: 4px; color: #5c6678; font-size: 12px; }
+      .reason { color: #5c6678; font-size: 13px; margin: 0 0 8px; }
+      .meta { color: #8b91a0; font-size: 12px; margin: 0 0 12px; }
+
+      .counts { display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch; margin-bottom: 10px; }
+      .count-cell {
+        flex: 1 1 0; min-width: 90px; padding: 10px 12px; border-radius: 6px;
+        display: flex; flex-direction: column; gap: 2px;
+      }
+      .count-cell .num { font-size: 18px; font-weight: 600; }
+      .count-cell .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+      .cell-pending { background: #fff4e0; color: #c67a00; }
+      .cell-installed { background: #e7f7ef; color: #00a47c; }
+      .cell-failed { background: #fff3f3; color: #c33d3d; }
+      .cell-uninstalled { background: #eef0f5; color: #5c6678; }
+
+      .bar {
+        height: 8px; border-radius: 999px; overflow: hidden; background: #eef0f5;
+        display: flex; margin-bottom: 8px;
+      }
+      .bar > span { display: block; height: 100%; }
+      .bar .seg-installed { background: #00a47c; }
+      .bar .seg-pending { background: #c67a00; }
+      .bar .seg-failed { background: #c33d3d; }
+      .bar .seg-uninstalled { background: #b2b7c0; }
+
+      .retention { font-size: 13px; color: #5c6678; }
+      .retention strong { color: #1d2433; }
+
+      .err { background: #fff3f3; color: #c33d3d; border: 1px solid #f7caca; padding: 12px; border-radius: 6px; }
+      .leader-only { text-align: center; padding: 48px 24px; color: #5c6678; }
+      .empty { text-align: center; padding: 48px 24px; color: #5c6678; }
+    </style>
+  </head>
+  <body>
+    <Header />
+    <main>
+      <h1>我推送的</h1>
+      <p class="lead">看看你推送的 skill 装上了没、有没有人卸了。留存率 = 当前仍在用的成员 / 装过它的成员。</p>
+      <div id="list" aria-live="polite">
+        <p style="color:#b2b7c0;">加载中…</p>
+      </div>
+    </main>
+
+    <script>
+      type Push = {
+        id: string;
+        kind: string;
+        skillSlug: string;
+        skillVersionId: string | null;
+        fromLeaderId: string;
+        reason: string;
+        pushedAt: number;
+      };
+      type Counts = {
+        pending: number;
+        installed: number;
+        failed: number;
+        uninstalled: number;
+      };
+      type Item = { push: Push; counts: Counts };
+
+      const list = document.getElementById("list")!;
+
+      function escapeHtml(s: string): string {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function fmt(ms: number): string {
+        const d = new Date(ms);
+        return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}`;
+      }
+
+      async function load() {
+        try {
+          const res = await fetch("/v1/pushes/sent", { credentials: "same-origin" });
+          if (res.status === 401) {
+            location.href = `/login/github?returnTo=${encodeURIComponent("/leader/pushes")}`;
+            return;
+          }
+          if (res.status === 403) {
+            list.innerHTML = `<div class="leader-only">
+              <p>只有 leader 才能查看推送记录。</p>
+              <p><a href="/browse">回到浏览</a></p>
+            </div>`;
+            return;
+          }
+          if (!res.ok) throw new Error(`/v1/pushes/sent ${res.status}`);
+          const body = (await res.json()) as { items: Item[] };
+          render(body.items);
+        } catch (err) {
+          console.error(err);
+          list.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      function renderBar(c: Counts): string {
+        const total = c.pending + c.installed + c.failed + c.uninstalled;
+        if (total === 0) return "";
+        const pct = (n: number) => `${(n / total) * 100}%`;
+        return `
+          <div class="bar" aria-hidden="true">
+            <span class="seg-installed" style="width:${pct(c.installed)};"></span>
+            <span class="seg-pending" style="width:${pct(c.pending)};"></span>
+            <span class="seg-failed" style="width:${pct(c.failed)};"></span>
+            <span class="seg-uninstalled" style="width:${pct(c.uninstalled)};"></span>
+          </div>
+        `;
+      }
+
+      function renderRetention(c: Counts): string {
+        const denom = c.installed + c.uninstalled;
+        if (denom === 0) {
+          return `<div class="retention">还没有人装过 — 没有留存率可算。</div>`;
+        }
+        const pct = ((c.installed / denom) * 100).toFixed(0);
+        return `<div class="retention">留存率：<strong>${pct}%</strong>（${c.installed} / ${denom} 仍在用）</div>`;
+      }
+
+      function render(items: Item[]) {
+        if (items.length === 0) {
+          list.innerHTML = `
+            <div class="empty">
+              <p>还没有推送过任何 skill。</p>
+              <p style="font-size:13px;">到 <a href="/browse">浏览</a> 选一个 skill，点「推送给成员」即可。</p>
+            </div>
+          `;
+          return;
+        }
+        list.innerHTML = items.map((it) => {
+          const { push, counts } = it;
+          const verRef = push.skillVersionId
+            ? `<span class="ver-pill">${escapeHtml(push.skillVersionId.slice(0, 8))}</span>`
+            : "";
+          return `
+            <div class="card" data-push-id="${escapeHtml(push.id)}">
+              <h3>
+                <a href="/skills?slug=${encodeURIComponent(push.skillSlug)}" style="color:#1d2433;text-decoration:none;">
+                  ${escapeHtml(push.skillSlug)}
+                </a>
+                ${verRef}
+              </h3>
+              <p class="reason">${escapeHtml(push.reason)}</p>
+              <p class="meta">${fmt(push.pushedAt)}</p>
+              ${renderBar(counts)}
+              <div class="counts">
+                <div class="count-cell cell-installed">
+                  <span class="num">${counts.installed}</span>
+                  <span class="lbl">已安装</span>
+                </div>
+                <div class="count-cell cell-pending">
+                  <span class="num">${counts.pending}</span>
+                  <span class="lbl">待安装</span>
+                </div>
+                <div class="count-cell cell-failed">
+                  <span class="num">${counts.failed}</span>
+                  <span class="lbl">失败</span>
+                </div>
+                <div class="count-cell cell-uninstalled">
+                  <span class="num">${counts.uninstalled}</span>
+                  <span class="lbl">已卸载</span>
+                </div>
+              </div>
+              ${renderRetention(counts)}
+            </div>
+          `;
+        }).join("");
+      }
+
+      load();
+    </script>
+  </body>
+</html>

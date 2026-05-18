@@ -102,6 +102,7 @@ import Header from "../components/Header.astro";
           const detail = (await res.json()) as DetailResponse;
           renderShell(detail);
           wireInstallButton();
+          wirePushButton();
           await loadReadme(detail);
         } catch (err) {
           console.error(err);
@@ -130,6 +131,10 @@ import Header from "../components/Header.astro";
               <button id="install-btn" data-slug="${escapeHtml(d.skill.slug)}" data-semver="${current.semver}"
                 style="margin-left:auto;background:#5b5bd6;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font:inherit;">
                 ⬇ 一键安装
+              </button>
+              <button id="push-btn" data-slug="${escapeHtml(d.skill.slug)}" data-semver="${current.semver}"
+                style="display:none;background:#c67a00;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font:inherit;">
+                📤 推送给成员
               </button>
             </div>
           </div>
@@ -161,6 +166,23 @@ import Header from "../components/Header.astro";
       }
 
       type IntentResponse = { token: string; deepLink: string; fallbackCmd: string };
+
+      type MeResponse = {
+        user: {
+          id: string;
+          githubId: number;
+          name: string;
+          email: string | null;
+          avatarUrl: string | null;
+          role: "leader" | "member";
+        };
+      };
+      type UserLite = {
+        id: string;
+        name: string;
+        role: "leader" | "member";
+        avatarUrl: string | null;
+      };
 
       function wireInstallButton() {
         const btn = document.getElementById("install-btn") as HTMLButtonElement | null;
@@ -238,6 +260,124 @@ import Header from "../components/Header.astro";
             if (fb) fb.style.display = "block";
           }
         }, 1800);
+      }
+
+      async function wirePushButton() {
+        const btn = document.getElementById("push-btn") as HTMLButtonElement | null;
+        if (!btn) return;
+        // Show the button only if the current user is a leader.
+        let me: MeResponse | null = null;
+        try {
+          const res = await fetch("/v1/me", { credentials: "same-origin" });
+          if (res.status === 401) return;
+          if (!res.ok) return;
+          me = (await res.json()) as MeResponse;
+        } catch (err) {
+          console.error(err);
+          return;
+        }
+        if (!me || me.user.role !== "leader") return;
+        btn.style.display = "";
+        const leaderId = me.user.id;
+        btn.addEventListener("click", () => {
+          showPushModal({
+            skillSlug: String(btn.dataset["slug"]),
+            semver: Number(btn.dataset["semver"]),
+            leaderId,
+          });
+        });
+      }
+
+      function showPushModal(opts: { skillSlug: string; semver: number; leaderId: string }) {
+        const modal = document.createElement("div");
+        modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;";
+        modal.innerHTML = `
+          <div style="background:#fff;border-radius:10px;padding:24px;max-width:560px;width:90%;font-family:inherit;max-height:90vh;display:flex;flex-direction:column;">
+            <h2 style="margin:0 0 12px;font-size:18px;">推送给成员</h2>
+            <p style="color:#5c6678;margin:0 0 14px;font-size:13px;">
+              选择要推送给的成员，写一句推送理由，提交后他们会在「我的推送」里看到。
+            </p>
+            <div id="push-pickers" style="overflow-y:auto;border:1px solid #e6e8ee;border-radius:6px;padding:8px 12px;margin-bottom:12px;max-height:240px;">
+              <p style="color:#b2b7c0;margin:0;font-size:13px;">加载成员列表…</p>
+            </div>
+            <label style="display:block;margin-bottom:6px;font-size:13px;color:#5c6678;">推送理由（必填）</label>
+            <textarea id="push-reason" rows="3" placeholder="例如：team-debug-helper 升级到 v2，请大家更新"
+              style="width:100%;box-sizing:border-box;font:inherit;padding:8px 10px;border:1px solid #d0d4dc;border-radius:6px;resize:vertical;"></textarea>
+            <div style="text-align:right;margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+              <button id="push-cancel" style="background:transparent;border:1px solid #d0d4dc;color:#5c6678;padding:6px 14px;border-radius:6px;cursor:pointer;font:inherit;">取消</button>
+              <button id="push-submit" style="background:#c67a00;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font:inherit;">确认推送</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        const close = () => modal.remove();
+        document.getElementById("push-cancel")!.addEventListener("click", close);
+
+        const pickers = document.getElementById("push-pickers")!;
+        const submitBtn = document.getElementById("push-submit") as HTMLButtonElement;
+        const reasonEl = document.getElementById("push-reason") as HTMLTextAreaElement;
+
+        // Load member list
+        (async () => {
+          try {
+            const res = await fetch("/v1/users", { credentials: "same-origin" });
+            if (!res.ok) throw new Error(`/v1/users ${res.status}`);
+            const body = (await res.json()) as { users: UserLite[] };
+            const members = body.users.filter((u) => u.role === "member" && u.id !== opts.leaderId);
+            if (members.length === 0) {
+              pickers.innerHTML = `<p style="color:#5c6678;margin:0;font-size:13px;">没有可推送的成员。</p>`;
+              return;
+            }
+            pickers.innerHTML = members.map((u) => `
+              <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:14px;">
+                <input type="checkbox" class="push-recipient" value="${escapeHtml(u.id)}" />
+                <span>${escapeHtml(u.name)}</span>
+                <span style="color:#8b91a0;font-size:12px;">@${escapeHtml(u.id)}</span>
+              </label>
+            `).join("");
+          } catch (err) {
+            console.error(err);
+            pickers.innerHTML = `<p class="err" style="margin:0;">加载成员失败：${escapeHtml(String(err))}</p>`;
+          }
+        })();
+
+        submitBtn.addEventListener("click", async () => {
+          const reason = reasonEl.value.trim();
+          if (reason.length === 0) {
+            alert("推送理由不能为空");
+            return;
+          }
+          const recipientIds = Array.from(
+            pickers.querySelectorAll<HTMLInputElement>("input.push-recipient:checked")
+          ).map((cb) => cb.value);
+          if (recipientIds.length === 0) {
+            alert("请至少选一个成员");
+            return;
+          }
+          submitBtn.disabled = true;
+          submitBtn.textContent = "推送中…";
+          try {
+            const r = await fetch("/v1/pushes", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                skillSlug: opts.skillSlug,
+                semver: opts.semver,
+                recipientIds,
+                reason,
+              }),
+            });
+            if (!r.ok) throw new Error(`push ${r.status}: ${await r.text()}`);
+            alert(`已推送给 ${recipientIds.length} 位成员。`);
+            close();
+          } catch (err) {
+            console.error(err);
+            submitBtn.disabled = false;
+            submitBtn.textContent = "确认推送";
+            alert(`推送失败：${err}`);
+          }
+        });
       }
 
       async function loadReadme(d: DetailResponse) {
