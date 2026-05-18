@@ -255,9 +255,9 @@ End of phase:
 
 ## Done definition
 
-- [ ] All 9 tasks committed
-- [ ] CI green on push
-- [ ] `pnpm -r typecheck && pnpm -r test` green
-- [ ] README ⏳ → ✅ for Phase 3, with seed instructions
-- [ ] Memory snapshot saved
-- [ ] Phase 4 can start without unknowns about list/detail/readme paths
+- [x] All 9 tasks committed
+- [x] CI green on push
+- [x] `pnpm -r typecheck && pnpm -r test` green (116 tests + 1 skipped)
+- [x] README ⏳ → ✅ for Phase 3, with seed instructions
+- [x] Memory snapshot saved (`memory/phase-3-browse-done.md`)
+- [x] Phase 4 can start without unknowns about list/detail/readme paths

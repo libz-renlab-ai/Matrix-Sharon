@@ -10,13 +10,13 @@
 
 ## 当前状态
 
-🎯 **Phase 2 GitHub OAuth 已完成。** 仓库可构建 + CI 绿，登录链路打通（需自配 OAuth 应用密钥）。
+🎯 **Phase 3 浏览页 已完成。** 跑 seed 后 web 可见 3 个样例 skill，可点开详情看 readme。
 
 - ✅ [前端原型](./prototype/index.html) —— 全部主流程的可点击 demo（单 HTML 文件，零依赖）
 - ✅ [设计文档](./docs/superpowers/specs/2026-05-15-matrix-sharon-design.md) —— v1 spec
-- ✅ Phase 1 实现计划 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-1-scaffold.md)) —— 7 个 package 骨架 + SQLite 10 张表迁移 + CI
+- ✅ Phase 1 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-1-scaffold.md)) —— 7 个 package 骨架 + SQLite 10 张表迁移 + CI
 - ✅ Phase 2 GitHub OAuth ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-2-auth.md)) —— `/login/github` + `/auth/callback` + `/auth/logout` + `/v1/me`；签名 session cookie；第一个登录用户自动成为 leader
-- ⏳ Phase 3: 浏览/详情 REST 端点 + Astro 页面接入
+- ✅ Phase 3 浏览 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-3-browse.md)) —— `/v1/skills` 列表、`/v1/skills/:slug` 详情、`/readme`（markdown→html）；Astro 浏览页 + 详情页；`sharon-server-seed` 灌入样例
 - ⏳ Phase 4: 候选 / 提交 / 审批
 - ⏳ Phase 5: 安装 + 卸载（CLI + Web 一键）
 - ⏳ Phase 6: Leader 推送 + 接收侧 dispatcher
@@ -35,6 +35,9 @@ pnpm test
 pnpm --filter @matrix-sharon/adapters test
 pnpm --filter @matrix-sharon/server dev   # 启 server，端口 4321
 pnpm --filter @matrix-sharon/web dev      # 启 web，端口 4322（代理 /v1 到 4321）
+
+# 第一次跑想看到内容：灌入 3 个样例 skill
+pnpm --filter @matrix-sharon/server exec sharon-server-seed
 ```
 
 ## OAuth 设置（运行真登录需要）
