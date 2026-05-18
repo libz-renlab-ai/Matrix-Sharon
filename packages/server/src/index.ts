@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
-import { GithubOAuthHttp, SqliteUserStore } from "@matrix-sharon/adapters";
+import { GithubOAuthHttp, SqliteSkillStore, SqliteUserStore } from "@matrix-sharon/adapters";
 import { loadConfig } from "./config.js";
 import type { AppContext } from "./context.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -44,6 +44,7 @@ async function main(): Promise<void> {
     config,
     db,
     userStore: new SqliteUserStore(db),
+    skillStore: new SqliteSkillStore(db),
     github: config.github
       ? new GithubOAuthHttp(config.github)
       : null,

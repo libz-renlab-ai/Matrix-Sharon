@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type Database from "better-sqlite3";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
-import { SqliteUserStore } from "@matrix-sharon/adapters";
+import { SqliteSkillStore, SqliteUserStore } from "@matrix-sharon/adapters";
 import { buildApp } from "../src/index.js";
 import { loadConfig } from "../src/config.js";
 
@@ -41,6 +41,7 @@ describe("GET /health", () => {
       config,
       db,
       userStore: new SqliteUserStore(db),
+      skillStore: new SqliteSkillStore(db),
       github: null,
     });
     const res = await app.inject({ method: "GET", url: "/health" });

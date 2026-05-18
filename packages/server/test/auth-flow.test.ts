@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type Database from "better-sqlite3";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
-import { GithubOAuthFake, SqliteUserStore } from "@matrix-sharon/adapters";
+import { GithubOAuthFake, SqliteSkillStore, SqliteUserStore } from "@matrix-sharon/adapters";
 import type { GithubProfile } from "@matrix-sharon/types";
 import { buildApp } from "../src/index.js";
 import { loadConfig } from "../src/config.js";
@@ -64,6 +64,7 @@ function buildOauthEnabledApp() {
     config,
     db,
     userStore: new SqliteUserStore(db),
+    skillStore: new SqliteSkillStore(db),
     github: fakeOauth,
   });
 }
@@ -77,6 +78,7 @@ function buildOauthDisabledApp() {
     config,
     db,
     userStore: new SqliteUserStore(db),
+    skillStore: new SqliteSkillStore(db),
     github: null,
   });
 }
