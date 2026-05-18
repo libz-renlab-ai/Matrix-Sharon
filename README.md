@@ -17,7 +17,7 @@
 - ✅ Phase 1 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-1-scaffold.md)) —— 7 个 package 骨架 + SQLite 10 张表迁移 + CI
 - ✅ Phase 2 GitHub OAuth ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-2-auth.md)) —— `/login/github` + `/auth/callback` + `/auth/logout` + `/v1/me`；签名 session cookie；第一个登录用户自动成为 leader
 - ✅ Phase 3 浏览 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-3-browse.md)) —— `/v1/skills` 列表、`/v1/skills/:slug` 详情、`/readme`（markdown→html）；Astro 浏览页 + 详情页；`sharon-server-seed` 灌入样例
-- ⏳ Phase 4: 候选 / 提交 / 审批
+- ✅ Phase 4 提交审批 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-4-submit-approve.md)) —— `POST /v1/candidates`、`POST /v1/submissions`、leader 队列 + 通过/拒绝；批准自动出不可变 `SkillVersion` + bundle.tgz；`/me/candidates` 与 `/leader/queue` Astro 页面
 - ⏳ Phase 5: 安装 + 卸载（CLI + Web 一键）
 - ⏳ Phase 6: Leader 推送 + 接收侧 dispatcher
 

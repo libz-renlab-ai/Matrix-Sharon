@@ -172,9 +172,9 @@ End of phase:
 
 ## Done definition
 
-- [ ] All 12 tasks committed
-- [ ] CI green on push
-- [ ] `pnpm -r typecheck && pnpm -r test` green
-- [ ] README ⏳→✅ for Phase 4
-- [ ] Memory snapshot saved
-- [ ] Phase 5 can start without unknowns about candidate/submission/approval
+- [x] All 12 tasks committed
+- [x] CI green on push
+- [x] `pnpm -r typecheck && pnpm -r test` green (193 tests + 1 skipped)
+- [x] README ⏳→✅ for Phase 4
+- [x] Memory snapshot saved (`memory/phase-4-submit-approve-done.md`)
+- [x] Phase 5 can start without unknowns about candidate/submission/approval
