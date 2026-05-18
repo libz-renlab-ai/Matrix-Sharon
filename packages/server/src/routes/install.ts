@@ -195,7 +195,21 @@ export async function registerInstallRoutes(app: FastifyInstance): Promise<void>
     "/v1/installs/:slug",
     withAuth(async (req, reply, _session, user) => {
       const { slug } = req.params as { slug: string };
-      await app.ctx.installStore.markUninstalled(user.id, slug, Date.now());
+      // Look up the install row first to capture via_push_id BEFORE we soft-delete.
+      const row = app.ctx.db
+        .prepare("SELECT via_push_id FROM installs WHERE user_id = ? AND skill_slug = ?")
+        .get(user.id, slug) as { via_push_id: string | null } | undefined;
+      const now = Date.now();
+      await app.ctx.installStore.markUninstalled(user.id, slug, now);
+      // If this install came via a push, flip the push receipt to uninstalled
+      // so leader retention numbers stay accurate.
+      if (row?.via_push_id) {
+        await app.ctx.pushStore.setReceiptStatus(row.via_push_id, user.id, {
+          status: "uninstalled",
+          statusChangedAt: now,
+          failReason: null,
+        });
+      }
       return reply.code(204).send();
     })
   );
