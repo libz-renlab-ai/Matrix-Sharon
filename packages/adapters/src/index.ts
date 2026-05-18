@@ -7,6 +7,7 @@ export { SqliteCandidateStore } from "./storage/sqlite/candidate-store.js";
 export { SqliteSubmissionStore } from "./storage/sqlite/submission-store.js";
 export { SqliteAuditLog } from "./storage/sqlite/audit-log.js";
 export { SqliteInstallStore } from "./storage/sqlite/install-store.js";
+export { SqlitePushStore } from "./storage/sqlite/push-store.js";
 export { FsBundleStore, type FsBundleStoreOptions } from "./bundle/fs.js";
 export { seedSampleSkills } from "./seed/index.js";
 export type { default as SqliteDb } from "better-sqlite3";
