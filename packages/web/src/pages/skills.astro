@@ -101,6 +101,7 @@ import Header from "../components/Header.astro";
           if (!res.ok) throw new Error(`detail ${res.status}`);
           const detail = (await res.json()) as DetailResponse;
           renderShell(detail);
+          wireInstallButton();
           await loadReadme(detail);
         } catch (err) {
           console.error(err);
@@ -126,6 +127,10 @@ import Header from "../components/Header.astro";
               ${d.skill.category ? `<span class="cat-pill" style="background:${color}">${escapeHtml(d.skill.category)}</span>` : ""}
               <span class="ver-pill">v${current.semver}（当前）</span>
               <span>by @${escapeHtml(d.skill.authorId)}</span>
+              <button id="install-btn" data-slug="${escapeHtml(d.skill.slug)}" data-semver="${current.semver}"
+                style="margin-left:auto;background:#5b5bd6;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font:inherit;">
+                ⬇ 一键安装
+              </button>
             </div>
           </div>
           <div class="grid">
@@ -153,6 +158,86 @@ import Header from "../components/Header.astro";
             </table>
           </div>
         `;
+      }
+
+      type IntentResponse = { token: string; deepLink: string; fallbackCmd: string };
+
+      function wireInstallButton() {
+        const btn = document.getElementById("install-btn") as HTMLButtonElement | null;
+        if (!btn) return;
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          btn.textContent = "请求中…";
+          try {
+            const res = await fetch("/v1/install-intent", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                skillSlug: btn.dataset["slug"],
+                semver: Number(btn.dataset["semver"]),
+              }),
+            });
+            if (res.status === 401) {
+              location.href = `/login/github?returnTo=${encodeURIComponent(location.pathname + location.search)}`;
+              return;
+            }
+            if (!res.ok) throw new Error(`intent ${res.status}`);
+            const intent = (await res.json()) as IntentResponse;
+            showInstallModal(intent);
+          } catch (err) {
+            console.error(err);
+            alert(`安装请求失败：${err}`);
+            btn.disabled = false;
+            btn.textContent = "⬇ 一键安装";
+          }
+        });
+      }
+
+      function showInstallModal(intent: IntentResponse) {
+        // Try the deep link; if no handler registered, browser does nothing.
+        const tryStart = Date.now();
+        let triedDeepLink = false;
+        const tryDeepLink = () => {
+          triedDeepLink = true;
+          location.href = intent.deepLink;
+        };
+
+        const modal = document.createElement("div");
+        modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;";
+        modal.innerHTML = `
+          <div style="background:#fff;border-radius:10px;padding:24px;max-width:520px;width:90%;font-family:inherit;">
+            <h2 style="margin:0 0 12px;font-size:18px;">一键安装</h2>
+            <p id="install-status" style="color:#5c6678;margin:0 0 12px;font-size:14px;">尝试唤起本地 sharon CLI…</p>
+            <div id="install-fallback" style="display:none;">
+              <p style="font-size:13px;color:#5c6678;margin:0 0 8px;">
+                浏览器无法唤起 sharon。把下面的命令贴到终端跑（先 export SHARON_TOKEN=…）：
+              </p>
+              <div style="background:#f0f1f5;border-radius:6px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:13px;display:flex;align-items:center;gap:8px;">
+                <code id="install-cmd" style="flex:1;">${escapeHtml(intent.fallbackCmd)}</code>
+                <button id="install-copy" style="background:#5b5bd6;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">复制</button>
+              </div>
+            </div>
+            <div style="text-align:right;margin-top:16px;">
+              <button id="install-close" style="background:transparent;border:1px solid #d0d4dc;color:#5c6678;padding:6px 14px;border-radius:6px;cursor:pointer;font:inherit;">关闭</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById("install-close")!.addEventListener("click", () => modal.remove());
+        document.getElementById("install-copy")!.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(intent.fallbackCmd);
+          (document.getElementById("install-copy") as HTMLButtonElement).textContent = "已复制";
+        });
+        tryDeepLink();
+        setTimeout(() => {
+          if (triedDeepLink && Date.now() - tryStart >= 1500) {
+            const s = document.getElementById("install-status");
+            if (s) s.textContent = "sharon CLI 没有响应（或本机未注册 sharon:// scheme）。";
+            const fb = document.getElementById("install-fallback");
+            if (fb) fb.style.display = "block";
+          }
+        }, 1800);
       }
 
       async function loadReadme(d: DetailResponse) {
