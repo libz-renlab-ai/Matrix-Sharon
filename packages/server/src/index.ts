@@ -55,7 +55,7 @@ declare module "fastify" {
   }
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   const config = loadConfig();
   const db = openDb();
   await runMigrations(db);
@@ -83,9 +83,11 @@ async function main(): Promise<void> {
   );
 }
 
-// Boot only when this module is the entry point (not when imported by tests).
-const entryHref = process.argv[1] ? new URL(`file://${process.argv[1]}`).href : "";
-if (import.meta.url === entryHref) {
+// Auto-boot when invoked via the standalone `tsx src/index.ts` dev script.
+// The bin shim at bin/sharon-server.mjs calls main() explicitly, so this
+// check just covers the `tsx watch src/index.ts` dev path.
+const argv1 = process.argv[1];
+if (argv1 && /[\\\/]src[\\\/]index\.ts$/.test(argv1)) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "bin": { "sharon": "./src/bin.ts" },
+  "bin": { "sharon": "./bin/sharon.mjs" },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -12,7 +12,8 @@
   "dependencies": {
     "@matrix-sharon/core": "workspace:*",
     "@matrix-sharon/types": "workspace:*",
-    "tar": "^7.4.3"
+    "tar": "^7.4.3",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

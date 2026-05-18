@@ -1,23 +1,15 @@
 import type Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { INITIAL_SQL } from "./migrations/_embedded.js";
 
 interface Migration {
   id: string;
-  file: string;
+  sql: string;
 }
 
-/**
- * Discover migrations in src/storage/sqlite/migrations/ at build time.
- * Phase 1 has a single migration. Later phases add files; we keep this list
- * static (vs glob at runtime) so it survives `tsc` to dist.
- */
+// Migrations are embedded as TS string constants (see migrations/_embedded.ts)
+// so they survive `tsc` to dist where sibling .sql files would not be copied.
 const MIGRATIONS: Migration[] = [
-  { id: "001_initial", file: "migrations/001_initial.sql" },
+  { id: "001_initial", sql: INITIAL_SQL },
 ];
 
 export async function runMigrations(db: Database.Database): Promise<void> {
@@ -34,10 +26,8 @@ export async function runMigrations(db: Database.Database): Promise<void> {
 
   for (const m of MIGRATIONS) {
     if (applied.has(m.id)) continue;
-    const sqlPath = resolve(__dirname, m.file);
-    const sql = readFileSync(sqlPath, "utf8");
     const tx = db.transaction(() => {
-      db.exec(sql);
+      db.exec(m.sql);
       db.prepare("INSERT INTO _migrations (id, applied_at) VALUES (?, ?)").run(
         m.id,
         Date.now()

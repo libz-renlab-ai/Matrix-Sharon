@@ -48,6 +48,9 @@ importers:
       tar:
         specifier: ^7.4.3
         version: 7.5.15
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.0
     devDependencies:
       '@types/node':
         specifier: ^22.9.0
@@ -123,6 +126,9 @@ importers:
       tar:
         specifier: ^7.4.3
         version: 7.5.15
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.0
       ulid:
         specifier: ^2.3.0
         version: 2.4.0
@@ -136,9 +142,6 @@ importers:
       '@types/node':
         specifier: ^22.9.0
         version: 22.19.19
-      tsx:
-        specifier: ^4.19.2
-        version: 4.22.0
       typescript:
         specifier: ^5.6.3
         version: 5.9.3

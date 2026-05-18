@@ -5,8 +5,8 @@
   "type": "module",
   "main": "./src/index.ts",
   "bin": {
-    "sharon-server": "./src/index.ts",
-    "sharon-server-seed": "./src/bin/seed.ts"
+    "sharon-server": "./bin/sharon-server.mjs",
+    "sharon-server-seed": "./bin/sharon-server-seed.mjs"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -23,13 +23,13 @@
     "fastify": "^5.1.0",
     "marked": "^15.0.0",
     "tar": "^7.4.3",
+    "tsx": "^4.19.2",
     "ulid": "^2.3.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.9.0",
-    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
   }
