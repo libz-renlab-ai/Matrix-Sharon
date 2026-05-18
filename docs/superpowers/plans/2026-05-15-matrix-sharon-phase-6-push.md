@@ -145,9 +145,9 @@ End of phase:
 
 ## Done definition
 
-- [ ] All 7 tasks committed
-- [ ] CI green on push
-- [ ] `pnpm -r typecheck && pnpm -r test` green
-- [ ] README ⏳→✅ for Phase 6 (and a "v1 complete" note)
-- [ ] Memory snapshot saved
-- [ ] No ⏳ items left in the roadmap
+- [x] All 7 tasks committed
+- [x] CI green on push
+- [x] `pnpm -r typecheck && pnpm -r test` green (251 tests + 1 skipped)
+- [x] README ⏳→✅ for Phase 6 (with "v1 完成 🎉" note)
+- [x] Memory snapshot saved (`memory/phase-6-push-done.md`)
+- [x] No ⏳ items left in the roadmap

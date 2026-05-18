@@ -10,7 +10,7 @@
 
 ## 当前状态
 
-🎯 **Phase 3 浏览页 已完成。** 跑 seed 后 web 可见 3 个样例 skill，可点开详情看 readme。
+🎉 **v1 已完成（Phase 1-6 全数落 main，CI 全绿）。** 全部主流程都跑通：登录 → 浏览 → 候选/提交 → leader 审批 → 一键安装 → leader 推送 → 接收侧 dispatcher → 留存率信号回流 leader 视图。
 
 - ✅ [前端原型](./prototype/index.html) —— 全部主流程的可点击 demo（单 HTML 文件，零依赖）
 - ✅ [设计文档](./docs/superpowers/specs/2026-05-15-matrix-sharon-design.md) —— v1 spec
@@ -19,7 +19,7 @@
 - ✅ Phase 3 浏览 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-3-browse.md)) —— `/v1/skills` 列表、`/v1/skills/:slug` 详情、`/readme`（markdown→html）；Astro 浏览页 + 详情页；`sharon-server-seed` 灌入样例
 - ✅ Phase 4 提交审批 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-4-submit-approve.md)) —— `POST /v1/candidates`、`POST /v1/submissions`、leader 队列 + 通过/拒绝；批准自动出不可变 `SkillVersion` + bundle.tgz；`/me/candidates` 与 `/leader/queue` Astro 页面
 - ✅ Phase 5 安装 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-5-install.md)) —— bundle 下载、`install-intent` token 流；`sharon install/uninstall/publish/scan` CLI；web 一键安装按钮（`sharon://` + 复制命令 fallback）
-- ⏳ Phase 6: Leader 推送 + 接收侧 dispatcher
+- ✅ Phase 6 推送 ([plan](./docs/superpowers/plans/2026-05-15-matrix-sharon-phase-6-push.md)) —— `POST /v1/pushes` + inbox + ack + done/failed + leader 留存视图；`sharon receive` 接收侧 dispatcher；`/me/inbox` 与 `/leader/pushes` Astro 页面；卸载自动联动 push_receipts 留存信号
 
 ## 开发
 
@@ -45,6 +45,7 @@ SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon install sql-s
 SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon uninstall sql-safety-gate
 SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon publish ./my-skill-dir
 SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon scan
+SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon receive   # 跑 leader 推过来的安装
 ```
 
 ## OAuth 设置（运行真登录需要）
