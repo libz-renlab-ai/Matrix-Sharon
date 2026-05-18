@@ -1,23 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { rmSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type Database from "better-sqlite3";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
-import { GithubOAuthFake, SqliteSkillStore, SqliteUserStore } from "@matrix-sharon/adapters";
+import { GithubOAuthFake } from "@matrix-sharon/adapters";
 import { createSession } from "@matrix-sharon/core";
 import type { GithubProfile } from "@matrix-sharon/types";
 import { buildApp } from "../src/index.js";
-import { loadConfig } from "../src/config.js";
 import { SESSION_COOKIE, setSessionCookie } from "../src/session-cookie.js";
-
-const tmpDirs: string[] = [];
-function makeTmpDb() {
-  const dir = mkdtempSync(join(tmpdir(), "sharon-me-test-"));
-  tmpDirs.push(dir);
-  return join(dir, "test.db");
-}
+import { buildTestContext, cleanupTmpDirs, makeTmpDb } from "./helpers.js";
 
 const octocat: GithubProfile = {
   login: "octocat",
@@ -31,35 +21,20 @@ const octocat: GithubProfile = {
 let db: Database.Database;
 
 beforeEach(async () => {
-  db = openDb({ path: makeTmpDb() });
+  db = openDb({ path: makeTmpDb("sharon-me-") });
   await runMigrations(db);
 });
 
 afterEach(() => {
   db.close();
-  while (tmpDirs.length) {
-    const d = tmpDirs.pop();
-    if (d) rmSync(d, { recursive: true, force: true });
-  }
+  cleanupTmpDirs();
 });
 
 function buildTestApp() {
-  const config = loadConfig({
-    NODE_ENV: "test",
-    SHARON_SESSION_SECRET: "x".repeat(32),
-    GITHUB_CLIENT_ID: "test-client",
-    GITHUB_CLIENT_SECRET: "test-secret",
-  });
   const fake = new GithubOAuthFake();
   fake.register("code-1", octocat);
   return {
-    app: buildApp({
-      config,
-      db,
-      userStore: new SqliteUserStore(db),
-      skillStore: new SqliteSkillStore(db),
-      github: fake,
-    }),
+    app: buildApp(buildTestContext({ db, oauthEnabled: true, github: fake })),
     fake,
   };
 }

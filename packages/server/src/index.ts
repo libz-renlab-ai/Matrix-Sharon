@@ -2,7 +2,15 @@ import Fastify, { type FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
-import { GithubOAuthHttp, SqliteSkillStore, SqliteUserStore } from "@matrix-sharon/adapters";
+import {
+  FsBundleStore,
+  GithubOAuthHttp,
+  SqliteAuditLog,
+  SqliteCandidateStore,
+  SqliteSkillStore,
+  SqliteSubmissionStore,
+  SqliteUserStore,
+} from "@matrix-sharon/adapters";
 import { loadConfig } from "./config.js";
 import type { AppContext } from "./context.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -47,6 +55,10 @@ async function main(): Promise<void> {
     db,
     userStore: new SqliteUserStore(db),
     skillStore: new SqliteSkillStore(db),
+    candidateStore: new SqliteCandidateStore(db),
+    submissionStore: new SqliteSubmissionStore(db),
+    auditLog: new SqliteAuditLog(db),
+    bundleStore: new FsBundleStore(),
     github: config.github
       ? new GithubOAuthHttp(config.github)
       : null,

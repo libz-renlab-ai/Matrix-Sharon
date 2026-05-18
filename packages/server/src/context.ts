@@ -1,5 +1,13 @@
 import type { SqliteDb } from "@matrix-sharon/adapters";
-import type { GithubOAuth, SkillStore, UserStore } from "@matrix-sharon/ports";
+import type {
+  AuditLog,
+  BundleStore,
+  CandidateStore,
+  GithubOAuth,
+  SkillStore,
+  SubmissionStore,
+  UserStore,
+} from "@matrix-sharon/ports";
 import type { AppConfig } from "./config.js";
 
 /**
@@ -13,6 +21,10 @@ export interface AppContext {
   db: SqliteDb.Database;
   userStore: UserStore;
   skillStore: SkillStore;
+  candidateStore: CandidateStore;
+  submissionStore: SubmissionStore;
+  auditLog: AuditLog;
+  bundleStore: BundleStore;
   /** null when oauthEnabled=false in config. */
   github: GithubOAuth | null;
 }

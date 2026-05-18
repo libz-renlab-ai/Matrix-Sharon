@@ -1,22 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { rmSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type Database from "better-sqlite3";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
-import { GithubOAuthFake, SqliteSkillStore, SqliteUserStore } from "@matrix-sharon/adapters";
+import { GithubOAuthFake, SqliteUserStore } from "@matrix-sharon/adapters";
 import type { GithubProfile } from "@matrix-sharon/types";
 import { buildApp } from "../src/index.js";
-import { loadConfig } from "../src/config.js";
 import { SESSION_COOKIE } from "../src/session-cookie.js";
-
-const tmpDirs: string[] = [];
-function makeTmpDb() {
-  const dir = mkdtempSync(join(tmpdir(), "sharon-auth-test-"));
-  tmpDirs.push(dir);
-  return join(dir, "test.db");
-}
+import { buildTestContext, cleanupTmpDirs, makeTmpDb } from "./helpers.js";
 
 const octocat: GithubProfile = {
   login: "octocat",
@@ -40,47 +30,22 @@ let db: Database.Database;
 let fakeOauth: GithubOAuthFake;
 
 beforeEach(async () => {
-  db = openDb({ path: makeTmpDb() });
+  db = openDb({ path: makeTmpDb("sharon-auth-") });
   await runMigrations(db);
   fakeOauth = new GithubOAuthFake();
 });
 
 afterEach(() => {
   db.close();
-  while (tmpDirs.length) {
-    const d = tmpDirs.pop();
-    if (d) rmSync(d, { recursive: true, force: true });
-  }
+  cleanupTmpDirs();
 });
 
 function buildOauthEnabledApp() {
-  const config = loadConfig({
-    NODE_ENV: "test",
-    SHARON_SESSION_SECRET: "x".repeat(32),
-    GITHUB_CLIENT_ID: "test-client",
-    GITHUB_CLIENT_SECRET: "test-secret",
-  });
-  return buildApp({
-    config,
-    db,
-    userStore: new SqliteUserStore(db),
-    skillStore: new SqliteSkillStore(db),
-    github: fakeOauth,
-  });
+  return buildApp(buildTestContext({ db, oauthEnabled: true, github: fakeOauth }));
 }
 
 function buildOauthDisabledApp() {
-  const config = loadConfig({
-    NODE_ENV: "test",
-    SHARON_SESSION_SECRET: "x".repeat(32),
-  });
-  return buildApp({
-    config,
-    db,
-    userStore: new SqliteUserStore(db),
-    skillStore: new SqliteSkillStore(db),
-    github: null,
-  });
+  return buildApp(buildTestContext({ db }));
 }
 
 describe("GET /login/github", () => {

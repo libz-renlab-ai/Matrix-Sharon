@@ -1,51 +1,28 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { rmSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type Database from "better-sqlite3";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
-import { SqliteUserStore, SqliteSkillStore } from "@matrix-sharon/adapters";
+import { SqliteUserStore } from "@matrix-sharon/adapters";
 import { createSession } from "@matrix-sharon/core";
 import { buildApp } from "../src/index.js";
-import { loadConfig } from "../src/config.js";
 import { setSessionCookie } from "../src/session-cookie.js";
 import { withAuth, withLeader } from "../src/auth-guard.js";
-
-const tmpDirs: string[] = [];
-function makeTmpDb() {
-  const dir = mkdtempSync(join(tmpdir(), "sharon-guard-test-"));
-  tmpDirs.push(dir);
-  return join(dir, "test.db");
-}
+import { buildTestContext, cleanupTmpDirs, makeTmpDb } from "./helpers.js";
 
 let db: Database.Database;
 
 beforeEach(async () => {
-  db = openDb({ path: makeTmpDb() });
+  db = openDb({ path: makeTmpDb("sharon-guard-") });
   await runMigrations(db);
 });
 
 afterEach(() => {
   db.close();
-  while (tmpDirs.length) {
-    const d = tmpDirs.pop();
-    if (d) rmSync(d, { recursive: true, force: true });
-  }
+  cleanupTmpDirs();
 });
 
 async function buildTestApp() {
-  const config = loadConfig({
-    NODE_ENV: "test",
-    SHARON_SESSION_SECRET: "x".repeat(32),
-  });
-  const app = await buildApp({
-    config,
-    db,
-    userStore: new SqliteUserStore(db),
-    skillStore: new SqliteSkillStore(db),
-    github: null,
-  });
+  const app = await buildApp(buildTestContext({ db }));
   app.get(
     "/test-protected",
     withAuth(async (_req, _reply, session, user) => ({

@@ -1,27 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { rmSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type Database from "better-sqlite3";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
-import {
-  seedSampleSkills,
-  SqliteSkillStore,
-  SqliteUserStore,
-} from "@matrix-sharon/adapters";
+import { seedSampleSkills, SqliteSkillStore, SqliteUserStore } from "@matrix-sharon/adapters";
 import { createSession } from "@matrix-sharon/core";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/index.js";
-import { loadConfig } from "../src/config.js";
 import { setSessionCookie } from "../src/session-cookie.js";
-
-const tmpDirs: string[] = [];
-function makeTmpDb() {
-  const dir = mkdtempSync(join(tmpdir(), "sharon-skills-routes-test-"));
-  tmpDirs.push(dir);
-  return join(dir, "test.db");
-}
+import { buildTestContext, cleanupTmpDirs, makeTmpDb } from "./helpers.js";
 
 let db: Database.Database;
 let app: FastifyInstance;
@@ -46,29 +32,16 @@ async function login(user = "octocat"): Promise<string> {
 }
 
 beforeEach(async () => {
-  db = openDb({ path: makeTmpDb() });
+  db = openDb({ path: makeTmpDb("sharon-skills-routes-") });
   await runMigrations(db);
-  const config = loadConfig({
-    NODE_ENV: "test",
-    SHARON_SESSION_SECRET: "x".repeat(32),
-  });
-  app = await buildApp({
-    config,
-    db,
-    userStore: new SqliteUserStore(db),
-    skillStore: new SqliteSkillStore(db),
-    github: null,
-  });
+  app = await buildApp(buildTestContext({ db }));
   sessionCookie = await login("octocat");
 });
 
 afterEach(async () => {
   await app.close();
   db.close();
-  while (tmpDirs.length) {
-    const d = tmpDirs.pop();
-    if (d) rmSync(d, { recursive: true, force: true });
-  }
+  cleanupTmpDirs();
 });
 
 describe("GET /v1/skills", () => {
