@@ -8,3 +8,4 @@
 export const CORE_VERSION = "0.0.0" as const;
 export * from "./oauth-state.js";
 export * from "./session.js";
+export * from "./frontmatter.js";
