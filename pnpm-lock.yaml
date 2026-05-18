@@ -39,9 +39,15 @@ importers:
 
   packages/cli:
     dependencies:
+      '@matrix-sharon/core':
+        specifier: workspace:*
+        version: link:../core
       '@matrix-sharon/types':
         specifier: workspace:*
         version: link:../types
+      tar:
+        specifier: ^7.4.3
+        version: 7.5.15
     devDependencies:
       '@types/node':
         specifier: ^22.9.0
@@ -49,6 +55,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.5
+        version: 2.1.9(@types/node@22.19.19)
 
   packages/core:
     dependencies:
