@@ -9,6 +9,7 @@ import {
   SqliteAuditLog,
   SqliteCandidateStore,
   SqliteInstallStore,
+  SqlitePushStore,
   SqliteSkillStore,
   SqliteSubmissionStore,
   SqliteUserStore,
@@ -108,6 +109,7 @@ export function buildTestContext(opts: BuildCtxOptions): AppContext {
     auditLog: new SqliteAuditLog(opts.db),
     bundleStore: new FsBundleStore(opts.dataDir ? { dataDir: opts.dataDir } : {}),
     installStore: new SqliteInstallStore(opts.db),
+    pushStore: new SqlitePushStore(opts.db),
     github: opts.github ?? (opts.oauthEnabled ? new GithubOAuthFake() : null),
   };
 }

@@ -8,6 +8,7 @@ import {
   SqliteAuditLog,
   SqliteCandidateStore,
   SqliteInstallStore,
+  SqlitePushStore,
   SqliteSkillStore,
   SqliteSubmissionStore,
   SqliteUserStore,
@@ -21,6 +22,7 @@ import { registerSkillRoutes } from "./routes/skills.js";
 import { registerCandidateRoutes } from "./routes/candidates.js";
 import { registerSubmissionRoutes } from "./routes/submissions.js";
 import { registerInstallRoutes } from "./routes/install.js";
+import { registerPushRoutes } from "./routes/pushes.js";
 
 export interface BuildAppOptions {
   /** Override Fastify logger. Default: pino in production, silent in test. */
@@ -42,6 +44,7 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
   await registerCandidateRoutes(app);
   await registerSubmissionRoutes(app);
   await registerInstallRoutes(app);
+  await registerPushRoutes(app);
 
   return app;
 }
@@ -67,6 +70,7 @@ async function main(): Promise<void> {
     auditLog: new SqliteAuditLog(db),
     bundleStore: new FsBundleStore(),
     installStore: new SqliteInstallStore(db),
+    pushStore: new SqlitePushStore(db),
     github: config.github
       ? new GithubOAuthHttp(config.github)
       : null,
