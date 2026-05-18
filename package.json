@@ -12,9 +12,12 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "build": "pnpm -r build",
-    "dev": "echo '(dev orchestrator — added in Phase 2)' && exit 0"
+    "dev": "concurrently --names server,web --prefix-colors blue,magenta --kill-others-on-fail \"pnpm --filter @matrix-sharon/server dev\" \"pnpm --filter @matrix-sharon/web dev\"",
+    "seed": "node packages/server/bin/sharon-server-seed.mjs",
+    "sharon": "node packages/cli/bin/sharon.mjs"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "typescript": "^5.6.3"
   }
 }

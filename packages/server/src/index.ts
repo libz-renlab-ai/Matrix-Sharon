@@ -1,5 +1,8 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
+import fastifyStatic from "@fastify/static";
+import { existsSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import { openDb } from "@matrix-sharon/adapters/storage/sqlite";
 import { runMigrations } from "@matrix-sharon/adapters/storage/sqlite/migrate";
 import {
@@ -27,6 +30,13 @@ import { registerPushRoutes } from "./routes/pushes.js";
 export interface BuildAppOptions {
   /** Override Fastify logger. Default: pino in production, silent in test. */
   logger?: boolean | object;
+  /**
+   * Absolute path to a built Astro `dist/` directory to serve at /. If set
+   * and the path exists, the web bundle is mounted alongside the API so a
+   * single-port deploy works. Default: null (no static mount — dev uses
+   * `astro dev` on a separate port with vite proxying /v1 → server).
+   */
+  webDist?: string | null;
 }
 
 export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -45,6 +55,16 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
   await registerSubmissionRoutes(app);
   await registerInstallRoutes(app);
   await registerPushRoutes(app);
+
+  if (opts.webDist && existsSync(opts.webDist) && statSync(opts.webDist).isDirectory()) {
+    await app.register(fastifyStatic, {
+      root: opts.webDist,
+      prefix: "/",
+      extensions: ["html"],
+      index: ["index.html"],
+    });
+    app.log.info(`serving web bundle from ${opts.webDist}`);
+  }
 
   return app;
 }
@@ -76,7 +96,13 @@ export async function main(): Promise<void> {
       : null,
   };
 
-  const app = await buildApp(ctx);
+  // Auto-mount web bundle if SHARON_WEB_DIST points at a built astro dist/.
+  // The Docker image sets this; local dev leaves it unset and uses astro dev.
+  const webDist = process.env["SHARON_WEB_DIST"]
+    ? resolve(process.env["SHARON_WEB_DIST"])
+    : null;
+
+  const app = await buildApp(ctx, { webDist });
   await app.listen({ port: config.port, host: config.host });
   app.log.info(
     `Matrix-Sharon server listening on ${config.publicBaseUrl} (oauth=${config.oauthEnabled})`
