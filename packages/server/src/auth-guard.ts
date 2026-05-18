@@ -22,3 +22,20 @@ export function withAuth(handler: AuthedHandler): RouteHandlerMethod {
     return handler(req, reply, session, user);
   };
 }
+
+/**
+ * Wrap a route handler so it only runs for leader-role users.
+ * 401 anonymous; 403 authenticated-but-not-leader.
+ */
+export function withLeader(handler: AuthedHandler): RouteHandlerMethod {
+  return async function leaderHandler(req, reply) {
+    const session = readSessionCookie(req);
+    if (!session) return reply.code(401).send({ error: "not_signed_in" });
+    const user = await this.ctx.userStore.findById(session.uid);
+    if (!user) return reply.code(401).send({ error: "not_signed_in" });
+    if (user.role !== "leader") {
+      return reply.code(403).send({ error: "leader_only" });
+    }
+    return handler(req, reply, session, user);
+  };
+}

@@ -10,7 +10,7 @@ import { createSession } from "@matrix-sharon/core";
 import { buildApp } from "../src/index.js";
 import { loadConfig } from "../src/config.js";
 import { setSessionCookie } from "../src/session-cookie.js";
-import { withAuth } from "../src/auth-guard.js";
+import { withAuth, withLeader } from "../src/auth-guard.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDb() {
@@ -49,6 +49,13 @@ async function buildTestApp() {
   app.get(
     "/test-protected",
     withAuth(async (_req, _reply, session, user) => ({
+      uid: session.uid,
+      role: user.role,
+    }))
+  );
+  app.get(
+    "/test-leader-only",
+    withLeader(async (_req, _reply, session, user) => ({
       uid: session.uid,
       role: user.role,
     }))
@@ -105,6 +112,72 @@ describe("withAuth", () => {
     const body = res.json() as { uid: string; role: string };
     expect(body.uid).toBe("octocat");
     expect(body.role).toBe("leader"); // first user → leader
+    await app.close();
+  });
+});
+
+describe("withLeader", () => {
+  it("401 anonymous", async () => {
+    const app = await buildTestApp();
+    const res = await app.inject({ method: "GET", url: "/test-leader-only" });
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("403 when user is member, not leader", async () => {
+    const app = await buildTestApp();
+    const us = new SqliteUserStore(db);
+    // First user → leader
+    await us.upsertFromGithub({
+      id: "leader-one",
+      githubId: 1,
+      name: "L",
+      email: null,
+      avatarUrl: null,
+      defaultRoleIfNew: "member",
+    });
+    // Second → member (and the test session)
+    await us.upsertFromGithub({
+      id: "octocat",
+      githubId: 2,
+      name: "O",
+      email: null,
+      avatarUrl: null,
+      defaultRoleIfNew: "member",
+    });
+    const set = await app.inject({ method: "GET", url: "/set-session" });
+    const cookie = (set.headers["set-cookie"] as string).split(";")[0]!;
+    const res = await app.inject({
+      method: "GET",
+      url: "/test-leader-only",
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: "leader_only" });
+    await app.close();
+  });
+
+  it("200 when user is leader", async () => {
+    const app = await buildTestApp();
+    const us = new SqliteUserStore(db);
+    await us.upsertFromGithub({
+      id: "octocat",
+      githubId: 1,
+      name: "O",
+      email: null,
+      avatarUrl: null,
+      defaultRoleIfNew: "member",
+    });
+    const set = await app.inject({ method: "GET", url: "/set-session" });
+    const cookie = (set.headers["set-cookie"] as string).split(";")[0]!;
+    const res = await app.inject({
+      method: "GET",
+      url: "/test-leader-only",
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { role: string };
+    expect(body.role).toBe("leader");
     await app.close();
   });
 });
