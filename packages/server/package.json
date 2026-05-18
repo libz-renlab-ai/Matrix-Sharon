@@ -7,18 +7,23 @@
   "bin": { "sharon-server": "./src/index.ts" },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "echo 'server has no logic yet — Phase 2+ adds tests' && exit 0",
+    "test": "vitest run",
     "build": "tsc",
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
     "@matrix-sharon/adapters": "workspace:*",
+    "@matrix-sharon/core": "workspace:*",
     "@matrix-sharon/ports": "workspace:*",
     "@matrix-sharon/types": "workspace:*",
-    "fastify": "^5.1.0"
+    "@fastify/cookie": "^11.0.1",
+    "fastify": "^5.1.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/node": "^22.9.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
   }
 }
