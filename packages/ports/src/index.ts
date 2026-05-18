@@ -8,3 +8,4 @@ export * from "./push-store.js";
 export * from "./install-store.js";
 export * from "./bundle-store.js";
 export * from "./audit-log.js";
+export * from "./github-oauth.js";
