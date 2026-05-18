@@ -1,0 +1,180 @@
+---
+import Header from "../components/Header.astro";
+---
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Skill 详情 · Matrix-Sharon</title>
+    <style>
+      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
+      main { padding: 32px 24px; max-width: 1080px; margin: 0 auto; }
+      .skel { background: #fff; border: 1px solid #e6e8ee; border-radius: 8px; padding: 24px; color: #b2b7c0; }
+      .err { background: #fff3f3; color: #c33d3d; border: 1px solid #f7caca; padding: 16px; border-radius: 8px; }
+      .back { color: #5b5bd6; text-decoration: none; font-size: 14px; }
+      .back:hover { text-decoration: underline; }
+
+      .hero { background: #fff; border: 1px solid #e6e8ee; border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; }
+      .hero h1 { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: 22px; }
+      .hero .icon { font-size: 28px; }
+      .hero .meta { display: flex; gap: 12px; align-items: center; font-size: 13px; color: #5c6678; }
+      .cat-pill { padding: 2px 8px; border-radius: 4px; color: #fff; font-size: 11px; }
+      .ver-pill { background: #eef0f5; padding: 2px 8px; border-radius: 4px; color: #5c6678; font-size: 12px; }
+
+      .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+      @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+      .readme {
+        background: #fff; border: 1px solid #e6e8ee; border-radius: 10px;
+        padding: 24px; line-height: 1.7;
+      }
+      .readme h1, .readme h2, .readme h3 { margin-top: 1.4em; margin-bottom: 0.4em; }
+      .readme code { background: #eef0f5; padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+      .readme pre {
+        background: #2b303b; color: #f5f7fa; padding: 12px; border-radius: 6px;
+        overflow-x: auto; font-size: 13px;
+      }
+      .readme pre code { background: transparent; color: inherit; padding: 0; }
+
+      .side { display: flex; flex-direction: column; gap: 12px; }
+      .four-block { background: #fff; border: 1px solid #e6e8ee; border-radius: 10px; padding: 16px; }
+      .four-block h3 { margin: 0 0 6px; font-size: 13px; color: #8b91a0; text-transform: uppercase; letter-spacing: 0.04em; }
+      .four-block p { margin: 0; font-size: 14px; color: #1d2433; }
+
+      .versions {
+        background: #fff; border: 1px solid #e6e8ee; border-radius: 10px;
+        padding: 16px 20px; margin-top: 16px;
+      }
+      .versions h2 { margin: 0 0 12px; font-size: 16px; }
+      .versions table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .versions th, .versions td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #f0f2f5; }
+      .versions th { color: #5c6678; font-weight: 500; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <Header />
+    <main>
+      <p><a class="back" href="/browse">← 返回浏览</a></p>
+      <div id="detail-root">
+        <div class="skel">加载中…</div>
+      </div>
+    </main>
+
+    <script>
+      type Skill = { slug: string; name: string; category: string | null; icon: string | null; authorId: string };
+      type SkillVersion = {
+        id: string; semver: number; description: string; pain: string | null; gain: string | null;
+        triggers: string | null; exampleJson: string | null; publishedAt: number; approvedAt: number;
+        publishedBy: string; approvedBy: string;
+      };
+      type DetailResponse = { skill: Skill; versions: SkillVersion[]; currentVersionId: string | null };
+      type ReadmeResponse = { html: string; semver: number };
+
+      const CATEGORY_COLORS: Record<string, string> = {
+        safety: "#c33d3d", review: "#5b5bd6", debug: "#c67a00", write: "#00a47c",
+        perf: "#7d4ec3", test: "#00879c", i18n: "#0072c6", git: "#5c6678",
+      };
+
+      const slug = new URLSearchParams(location.search).get("slug");
+      const root = document.getElementById("detail-root")!;
+
+      function escapeHtml(s: string): string {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function fmtDate(ms: number): string { return new Date(ms).toISOString().slice(0, 10); }
+
+      async function load() {
+        if (!slug) {
+          root.innerHTML = '<div class="err">缺少 slug 参数。</div>';
+          return;
+        }
+        try {
+          const res = await fetch(`/v1/skills/${encodeURIComponent(slug)}`, { credentials: "same-origin" });
+          if (res.status === 401) {
+            location.href = `/login/github?returnTo=${encodeURIComponent(location.pathname + location.search)}`;
+            return;
+          }
+          if (res.status === 404) {
+            root.innerHTML = '<div class="err">未找到该 skill。<a href="/browse">回到浏览</a></div>';
+            return;
+          }
+          if (!res.ok) throw new Error(`detail ${res.status}`);
+          const detail = (await res.json()) as DetailResponse;
+          renderShell(detail);
+          await loadReadme(detail);
+        } catch (err) {
+          console.error(err);
+          root.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      function renderShell(d: DetailResponse) {
+        const current = d.versions.find((v) => v.id === d.currentVersionId) ?? d.versions[0];
+        if (!current) {
+          root.innerHTML = '<div class="err">该 skill 还没有任何版本。</div>';
+          return;
+        }
+        const color = (d.skill.category && CATEGORY_COLORS[d.skill.category]) || "#5c6678";
+        const icon = d.skill.icon || "🧩";
+        root.innerHTML = `
+          <div class="hero">
+            <h1>
+              <span class="icon">${icon}</span>
+              <span>${escapeHtml(d.skill.name)}</span>
+            </h1>
+            <div class="meta">
+              ${d.skill.category ? `<span class="cat-pill" style="background:${color}">${escapeHtml(d.skill.category)}</span>` : ""}
+              <span class="ver-pill">v${current.semver}（当前）</span>
+              <span>by @${escapeHtml(d.skill.authorId)}</span>
+            </div>
+          </div>
+          <div class="grid">
+            <div id="readme-pane" class="readme">加载 readme…</div>
+            <div class="side">
+              ${current.pain ? `<div class="four-block"><h3>解决的问题</h3><p>${escapeHtml(current.pain)}</p></div>` : ""}
+              ${current.gain ? `<div class="four-block"><h3>装上后</h3><p>${escapeHtml(current.gain)}</p></div>` : ""}
+              ${current.triggers ? `<div class="four-block"><h3>触发条件</h3><p>${escapeHtml(current.triggers)}</p></div>` : ""}
+            </div>
+          </div>
+          <div class="versions">
+            <h2>所有版本</h2>
+            <table>
+              <thead><tr><th>版本</th><th>发布时间</th><th>提交人</th><th>审批人</th></tr></thead>
+              <tbody>
+                ${d.versions.map((v) => `
+                  <tr>
+                    <td>v${v.semver}${v.id === d.currentVersionId ? " · 当前" : ""}</td>
+                    <td>${fmtDate(v.publishedAt)}</td>
+                    <td>@${escapeHtml(v.publishedBy)}</td>
+                    <td>@${escapeHtml(v.approvedBy)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      async function loadReadme(d: DetailResponse) {
+        const current = d.versions.find((v) => v.id === d.currentVersionId) ?? d.versions[0];
+        if (!current) return;
+        const pane = document.getElementById("readme-pane");
+        if (!pane) return;
+        try {
+          const res = await fetch(
+            `/v1/skills/${encodeURIComponent(d.skill.slug)}/versions/${current.semver}/readme`,
+            { credentials: "same-origin" }
+          );
+          if (!res.ok) throw new Error(`readme ${res.status}`);
+          const r = (await res.json()) as ReadmeResponse;
+          pane.innerHTML = r.html;
+        } catch (err) {
+          console.error(err);
+          pane.innerHTML = `<div class="err">readme 加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      load();
+    </script>
+  </body>
+</html>
