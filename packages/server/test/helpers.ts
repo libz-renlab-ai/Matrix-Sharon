@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type Database from "better-sqlite3";
+import type { FastifyInstance } from "fastify";
 import {
   FsBundleStore,
   GithubOAuthFake,
@@ -11,9 +12,12 @@ import {
   SqliteSubmissionStore,
   SqliteUserStore,
 } from "@matrix-sharon/adapters";
+import { createSession } from "@matrix-sharon/core";
 import type { GithubOAuth } from "@matrix-sharon/ports";
+import type { Role } from "@matrix-sharon/types";
 import type { AppContext } from "../src/context.js";
 import { loadConfig } from "../src/config.js";
+import { setSessionCookie } from "../src/session-cookie.js";
 
 const tmpDirs: string[] = [];
 
@@ -41,6 +45,46 @@ export interface BuildCtxOptions {
   oauthEnabled?: boolean;
   github?: GithubOAuth | null;
   dataDir?: string;
+}
+
+/**
+ * Register a one-shot route `/_test_login?user=…` on the app that sets a
+ * session cookie. Call once per app; then call `loginAs(app, "name")` to
+ * get the cookie header.
+ */
+export function installLoginHelper(app: FastifyInstance): void {
+  app.get<{ Querystring: { user?: string } }>("/_test_login", async (req, reply) => {
+    const user = req.query.user;
+    if (!user) return reply.code(400).send({ error: "missing user" });
+    setSessionCookie(reply, createSession(user, Date.now()), { secure: false });
+    return {};
+  });
+}
+
+/**
+ * Ensure a user exists (using UserStore directly) and produce a session cookie
+ * header for them. Requires installLoginHelper(app) to have been called first.
+ */
+export async function loginAs(
+  app: FastifyInstance,
+  db: Database.Database,
+  user: string,
+  defaultRoleIfNew: Role = "member"
+): Promise<string> {
+  const us = new SqliteUserStore(db);
+  await us.upsertFromGithub({
+    id: user,
+    githubId: user.length || 1,
+    name: user,
+    email: null,
+    avatarUrl: null,
+    defaultRoleIfNew,
+  });
+  const res = await app.inject({
+    method: "GET",
+    url: `/_test_login?user=${encodeURIComponent(user)}`,
+  });
+  return (res.headers["set-cookie"] as string).split(";")[0]!;
 }
 
 export function buildTestContext(opts: BuildCtxOptions): AppContext {
