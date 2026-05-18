@@ -166,9 +166,9 @@ End of phase:
 
 ## Done definition
 
-- [ ] All 9 tasks committed
-- [ ] CI green on push
-- [ ] `pnpm -r typecheck && pnpm -r test` green
-- [ ] README ⏳→✅ for Phase 5
-- [ ] Memory snapshot saved
-- [ ] Phase 6 can start without unknowns about install/uninstall flow
+- [x] All 9 tasks committed
+- [x] CI green on push
+- [x] `pnpm -r typecheck && pnpm -r test` green (223 tests + 1 skipped)
+- [x] README ⏳→✅ for Phase 5
+- [x] Memory snapshot saved (`memory/phase-5-install-done.md`)
+- [x] Phase 6 can start without unknowns about install/uninstall flow
