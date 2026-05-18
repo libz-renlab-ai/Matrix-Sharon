@@ -6,15 +6,23 @@ import { GithubOAuthHttp, SqliteUserStore } from "@matrix-sharon/adapters";
 import { loadConfig } from "./config.js";
 import type { AppContext } from "./context.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerAuthRoutes } from "./routes/auth.js";
 
-export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
-  const app = Fastify({ logger: true });
+export interface BuildAppOptions {
+  /** Override Fastify logger. Default: pino in production, silent in test. */
+  logger?: boolean | object;
+}
+
+export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Promise<FastifyInstance> {
+  const logger = opts.logger ?? (process.env["NODE_ENV"] === "test" ? false : true);
+  const app = Fastify({ logger });
   await app.register(fastifyCookie, { secret: ctx.config.cookieSecret });
 
   // Make ctx reachable inside route handlers via decorator (typed below).
   app.decorate("ctx", ctx);
 
   await registerHealthRoutes(app);
+  await registerAuthRoutes(app);
 
   return app;
 }
