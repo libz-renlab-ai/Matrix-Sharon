@@ -285,9 +285,13 @@ describe("GET /v1/pushes/sent (leader retention)", () => {
       headers: { cookie: leader },
     });
     expect(res.statusCode).toBe(200);
-    const items = (res.json() as { items: Array<{ counts: { pending: number } }> }).items;
+    const items = (res.json() as { items: Array<{ push: { semver: number | null; skillSlug: string }; counts: { pending: number } }> }).items;
     expect(items).toHaveLength(1);
     expect(items[0]!.counts.pending).toBe(2);
+    // B1: leader's retention view should include human-readable semver,
+    // not just the bundle's ULID hash prefix.
+    expect(items[0]!.push.semver).toBe(1);
+    expect(items[0]!.push.skillSlug).toBe("sql-safety-gate");
   });
 });
 

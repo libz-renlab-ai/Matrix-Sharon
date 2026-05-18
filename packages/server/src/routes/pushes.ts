@@ -147,7 +147,7 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
           pushed_at: number;
         }>;
       const out: Array<{
-        push: ReturnType<typeof toPushOut>;
+        push: ReturnType<typeof toPushOut> & { semver: number | null };
         counts: Record<PushReceiptStatus, number>;
       }> = [];
       for (const r of rows) {
@@ -156,7 +156,12 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
           pending: 0, installed: 0, failed: 0, uninstalled: 0,
         };
         for (const rec of receipts) counts[rec.status]++;
-        out.push({ push: toPushOut(r), counts });
+        let semver: number | null = null;
+        if (r.skill_version_id) {
+          const v = await app.ctx.skillStore.findVersion(r.skill_version_id);
+          semver = v?.semver ?? null;
+        }
+        out.push({ push: { ...toPushOut(r), semver }, counts });
       }
       return { items: out };
     })

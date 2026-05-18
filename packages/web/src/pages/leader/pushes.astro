@@ -67,6 +67,7 @@ import Header from "../../components/Header.astro";
         kind: string;
         skillSlug: string;
         skillVersionId: string | null;
+        semver: number | null;
         fromLeaderId: string;
         reason: string;
         pushedAt: number;
@@ -147,9 +148,11 @@ import Header from "../../components/Header.astro";
         }
         list.innerHTML = items.map((it) => {
           const { push, counts } = it;
-          const verRef = push.skillVersionId
-            ? `<span class="ver-pill">${escapeHtml(push.skillVersionId.slice(0, 8))}</span>`
-            : "";
+          const verRef = push.semver !== null
+            ? `<span class="ver-pill">v${push.semver}</span>`
+            : (push.skillVersionId
+              ? `<span class="ver-pill">${escapeHtml(push.skillVersionId.slice(0, 8))}</span>`
+              : "");
           return `
             <div class="card" data-push-id="${escapeHtml(push.id)}">
               <h3>

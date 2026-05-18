@@ -23,48 +23,44 @@
 
 ## 开发
 
+完整端到端流程见 **[SETUP.md](./SETUP.md)**。下面是最常用的命令速查。
+
 ```bash
 # 一次性
 pnpm install
+
+# 启 server (4321) + web (4322)，一起跑
+pnpm dev
+
+# 灌入 3 个样例 skill（第一次想看到内容时）
+pnpm seed
 
 # 全部包：类型检查 + 测试
 pnpm typecheck
 pnpm test
 
-# 单独跑某一包
-pnpm --filter @matrix-sharon/adapters test
-pnpm --filter @matrix-sharon/server dev   # 启 server，端口 4321
-pnpm --filter @matrix-sharon/web dev      # 启 web，端口 4322（代理 /v1 到 4321）
-
-# 第一次跑想看到内容：灌入 3 个样例 skill
-pnpm --filter @matrix-sharon/server exec sharon-server-seed
-
 # Sharon CLI（先登录 web 拿到 sharon_session cookie，作为 SHARON_TOKEN）
-SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon --help
-SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon install sql-safety-gate
-SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon uninstall sql-safety-gate
-SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon publish ./my-skill-dir
-SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon scan
-SHARON_TOKEN=<cookie> pnpm --filter @matrix-sharon/cli exec sharon receive   # 跑 leader 推过来的安装
+SHARON_TOKEN=<cookie> pnpm sharon --help
+SHARON_TOKEN=<cookie> pnpm sharon install sql-safety-gate
+SHARON_TOKEN=<cookie> pnpm sharon uninstall sql-safety-gate
+SHARON_TOKEN=<cookie> pnpm sharon publish ./my-skill-dir
+SHARON_TOKEN=<cookie> pnpm sharon scan
+SHARON_TOKEN=<cookie> pnpm sharon receive   # 跑 leader 推过来的安装
 ```
+
+## Docker 自托
+
+```bash
+cp .env.example .env   # 填 SHARON_SESSION_SECRET + GitHub OAuth
+docker compose up -d
+# server + web 都在 http://127.0.0.1:4321
+```
+
+详见 [SETUP.md §5](./SETUP.md#5-docker-deploy)。
 
 ## OAuth 设置（运行真登录需要）
 
-不配置时 server 也能跑（`/health` 正常），只有 `/login/github` 返回 503 提示。要真登录：
-
-1. 浏览器开 <https://github.com/settings/developers> → **New OAuth App**
-2. 填：
-   - **Application name**：随意，比如 `matrix-sharon (local)`
-   - **Homepage URL**：`http://127.0.0.1:4321`
-   - **Authorization callback URL**：`http://127.0.0.1:4321/auth/callback`
-3. 创建后拿到 `Client ID`，再点 **Generate a new client secret** 拿到 secret
-4. 在仓库根（或 `packages/server/`）下放 `.env`：
-   ```env
-   GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
-   GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   SHARON_SESSION_SECRET=随便给 32+ 字节的随机串（openssl rand -hex 32）
-   ```
-5. `pnpm --filter @matrix-sharon/server dev` 启 server，访问 <http://127.0.0.1:4322>，点右上「使用 GitHub 登录」即可。第一个登录的用户自动成为 leader。
+参考 [SETUP.md §2](./SETUP.md#2-register-a-github-oauth-app)。**第一个登录的用户自动成为 leader。**
 
 ## 先看原型
 
