@@ -9,6 +9,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Opt into Node 24 for the action runtime ahead of the June 2 2026 forced
+      # cutover. Has no effect on our matrix node-version (still 22 / 24 below).
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     strategy:
       fail-fast: false
       matrix:
