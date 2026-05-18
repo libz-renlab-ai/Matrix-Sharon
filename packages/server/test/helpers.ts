@@ -8,6 +8,7 @@ import {
   GithubOAuthFake,
   SqliteAuditLog,
   SqliteCandidateStore,
+  SqliteInstallStore,
   SqliteSkillStore,
   SqliteSubmissionStore,
   SqliteUserStore,
@@ -106,6 +107,7 @@ export function buildTestContext(opts: BuildCtxOptions): AppContext {
     submissionStore: new SqliteSubmissionStore(opts.db),
     auditLog: new SqliteAuditLog(opts.db),
     bundleStore: new FsBundleStore(opts.dataDir ? { dataDir: opts.dataDir } : {}),
+    installStore: new SqliteInstallStore(opts.db),
     github: opts.github ?? (opts.oauthEnabled ? new GithubOAuthFake() : null),
   };
 }

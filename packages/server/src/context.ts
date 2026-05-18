@@ -4,6 +4,7 @@ import type {
   BundleStore,
   CandidateStore,
   GithubOAuth,
+  InstallStore,
   SkillStore,
   SubmissionStore,
   UserStore,
@@ -25,6 +26,7 @@ export interface AppContext {
   submissionStore: SubmissionStore;
   auditLog: AuditLog;
   bundleStore: BundleStore;
+  installStore: InstallStore;
   /** null when oauthEnabled=false in config. */
   github: GithubOAuth | null;
 }
