@@ -102,4 +102,4 @@ open prototype/index.html
 
 ## License
 
-MIT（待加 LICENSE 文件）
+[MIT](./LICENSE)
