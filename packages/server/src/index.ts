@@ -18,6 +18,7 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerMeRoutes } from "./routes/me.js";
 import { registerSkillRoutes } from "./routes/skills.js";
 import { registerCandidateRoutes } from "./routes/candidates.js";
+import { registerSubmissionRoutes } from "./routes/submissions.js";
 
 export interface BuildAppOptions {
   /** Override Fastify logger. Default: pino in production, silent in test. */
@@ -37,6 +38,7 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
   await registerMeRoutes(app);
   await registerSkillRoutes(app);
   await registerCandidateRoutes(app);
+  await registerSubmissionRoutes(app);
 
   return app;
 }
