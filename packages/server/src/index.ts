@@ -7,6 +7,7 @@ import { loadConfig } from "./config.js";
 import type { AppContext } from "./context.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerMeRoutes } from "./routes/me.js";
 
 export interface BuildAppOptions {
   /** Override Fastify logger. Default: pino in production, silent in test. */
@@ -23,6 +24,7 @@ export async function buildApp(ctx: AppContext, opts: BuildAppOptions = {}): Pro
 
   await registerHealthRoutes(app);
   await registerAuthRoutes(app);
+  await registerMeRoutes(app);
 
   return app;
 }
