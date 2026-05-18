@@ -3,4 +3,5 @@ export { UlidIdGen } from "./id-gen-ulid.js";
 export { GithubOAuthFake, GithubOAuthHttp, type GithubOAuthHttpOptions } from "./auth/github/index.js";
 export { SqliteUserStore } from "./storage/sqlite/user-store.js";
 export { SqliteSkillStore } from "./storage/sqlite/skill-store.js";
+export { seedSampleSkills } from "./seed/index.js";
 export type { default as SqliteDb } from "better-sqlite3";
