@@ -1,0 +1,20 @@
+---
+interface Props {
+  title?: string;
+  hint?: string;
+}
+const { title = "还没有 skill", hint = "Phase 4 上线后可通过 sharon publish 提交；现在可以运行 `pnpm sharon-server-seed` 灌入样例。" } = Astro.props;
+---
+
+<div class="empty">
+  <div class="emoji">🧩</div>
+  <h2>{title}</h2>
+  <p>{hint}</p>
+</div>
+
+<style>
+  .empty { text-align: center; padding: 64px 24px; color: #5c6678; }
+  .emoji { font-size: 48px; margin-bottom: 12px; }
+  .empty h2 { margin: 0 0 6px; font-size: 18px; color: #1d2433; }
+  .empty p { margin: 0; font-size: 14px; max-width: 480px; margin: 0 auto; }
+</style>

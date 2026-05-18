@@ -8,15 +8,15 @@ const title = "Matrix-Sharon · 团队技能集市";
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <style>
-      body {
-        margin: 0;
-        font-family: -apple-system, "PingFang SC", sans-serif;
-        background: #f7f8fb;
-        color: #1d2433;
-      }
+      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
       main { padding: 48px 24px; max-width: 880px; margin: 0 auto; }
       h1 { margin: 0 0 8px; }
-      .lead { color: #5c6678; margin: 0 0 24px; }
+      .lead { color: #5c6678; margin: 0 0 28px; font-size: 16px; }
+      .cta {
+        display: inline-block; background: #5b5bd6; color: #fff; padding: 12px 24px;
+        border-radius: 8px; text-decoration: none; font-weight: 500; margin-bottom: 24px;
+      }
+      .cta:hover { background: #4747b3; }
       .phase-status { background: #fff; border: 1px solid #e6e8ee; border-radius: 8px; padding: 16px; }
       .phase-status h2 { margin: 0 0 12px; font-size: 16px; }
       .phase-status ul { margin: 0; padding-left: 20px; line-height: 1.8; }
@@ -27,13 +27,16 @@ const title = "Matrix-Sharon · 团队技能集市";
     <Header />
     <main>
       <h1>Matrix-Sharon</h1>
-      <p class="lead">团队技能集市 — Phase 2 已接入 GitHub OAuth</p>
+      <p class="lead">团队技能集市 — 上传、审批、一键安装。</p>
+
+      <a class="cta" href="/browse">→ 浏览技能</a>
+
       <div class="phase-status">
         <h2>当前阶段</h2>
         <ul>
           <li>✅ Phase 1 — 7 包脚手架 + SQLite 10 表迁移</li>
           <li>✅ Phase 2 — GitHub OAuth、签名 session、<code>/v1/me</code></li>
-          <li>⏳ Phase 3 — 浏览 / 详情 REST + Astro 页面</li>
+          <li>✅ Phase 3 — 浏览 / 详情 REST + Astro 浏览页 / 详情页</li>
           <li>⏳ Phase 4 — 候选 → 提交 → 审批</li>
           <li>⏳ Phase 5 — 安装 / 卸载（CLI + Web 一键）</li>
           <li>⏳ Phase 6 — Leader 推送 + 接收侧 dispatcher</li>
