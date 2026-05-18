@@ -1,0 +1,140 @@
+---
+import Header from "../../components/Header.astro";
+---
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>待我决定 · Matrix-Sharon</title>
+    <style>
+      body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; background: #f7f8fb; color: #1d2433; }
+      main { padding: 32px 24px; max-width: 1080px; margin: 0 auto; }
+      h1 { margin: 0 0 8px; }
+      .lead { color: #5c6678; margin: 0 0 24px; font-size: 14px; }
+      .row {
+        background: #fff; border: 1px solid #e6e8ee; border-radius: 8px; padding: 16px;
+        margin-bottom: 12px; display: flex; gap: 16px; align-items: flex-start;
+      }
+      .row .col-info { flex: 1; }
+      .row h3 { margin: 0 0 4px; font-size: 15px; }
+      .row .reason { color: #5c6678; font-size: 13px; margin: 0; }
+      .row .time { color: #8b91a0; font-size: 12px; margin: 4px 0 0; }
+      .actions { display: flex; gap: 8px; flex-shrink: 0; }
+      .btn {
+        font: inherit; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none;
+      }
+      .btn-primary { background: #5b5bd6; color: #fff; }
+      .btn-primary:hover { background: #4747b3; }
+      .btn-ghost { background: transparent; border: 1px solid #d0d4dc; color: #5c6678; }
+      .btn-ghost:hover { border-color: #b2b7c0; color: #1d2433; }
+      .err { background: #fff3f3; color: #c33d3d; border: 1px solid #f7caca; padding: 12px; border-radius: 6px; }
+      .empty { text-align: center; padding: 48px 24px; color: #5c6678; }
+    </style>
+  </head>
+  <body>
+    <Header />
+    <main>
+      <h1>待我决定</h1>
+      <p class="lead">本地 scanner 发现的候选 skill。选「发布候选」会进入 leader 审批队列。</p>
+      <div id="list" aria-live="polite">
+        <p style="color:#b2b7c0;">加载中…</p>
+      </div>
+    </main>
+
+    <script>
+      type Candidate = {
+        id: string;
+        userId: string;
+        skillSlug: string;
+        detectedAt: number;
+        reason: string;
+      };
+
+      const list = document.getElementById("list")!;
+
+      function escapeHtml(s: string): string {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function fmt(ms: number): string {
+        const d = new Date(ms);
+        return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}`;
+      }
+
+      async function load() {
+        try {
+          const res = await fetch("/v1/candidates/mine", { credentials: "same-origin" });
+          if (res.status === 401) {
+            location.href = `/login/github?returnTo=${encodeURIComponent("/me/candidates")}`;
+            return;
+          }
+          if (!res.ok) throw new Error(`/v1/candidates/mine ${res.status}`);
+          const body = (await res.json()) as { candidates: Candidate[] };
+          render(body.candidates);
+        } catch (err) {
+          console.error(err);
+          list.innerHTML = `<div class="err">加载失败：${escapeHtml(String(err))}</div>`;
+        }
+      }
+
+      function render(items: Candidate[]) {
+        if (items.length === 0) {
+          list.innerHTML = `
+            <div class="empty">
+              <p>当前没有待决定的候选 skill。</p>
+              <p style="font-size:13px;">Phase 5 接入本地 scanner 后，新建的 skill 会自动出现在这里。现在可用 sharon publish 直接提交。</p>
+            </div>
+          `;
+          return;
+        }
+        list.innerHTML = items.map((c) => `
+          <div class="row" data-id="${c.id}">
+            <div class="col-info">
+              <h3>${escapeHtml(c.skillSlug)}</h3>
+              <p class="reason">${escapeHtml(c.reason)}</p>
+              <p class="time">${fmt(c.detectedAt)}</p>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" data-act="submit">发布候选 →</button>
+              <button class="btn btn-ghost" data-act="dismiss">忽略</button>
+            </div>
+          </div>
+        `).join("");
+
+        list.querySelectorAll<HTMLButtonElement>(".btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const row = btn.closest<HTMLDivElement>(".row");
+            if (!row) return;
+            const id = row.dataset["id"]!;
+            const act = btn.dataset["act"];
+            btn.disabled = true;
+            try {
+              if (act === "submit") {
+                const r = await fetch("/v1/submissions", {
+                  method: "POST",
+                  credentials: "same-origin",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ candidateId: id }),
+                });
+                if (!r.ok) throw new Error(`submit ${r.status}: ${await r.text()}`);
+              } else if (act === "dismiss") {
+                const r = await fetch(`/v1/candidates/${encodeURIComponent(id)}`, {
+                  method: "DELETE",
+                  credentials: "same-origin",
+                });
+                if (!r.ok) throw new Error(`dismiss ${r.status}`);
+              }
+              row.remove();
+              if (list.children.length === 0) render([]);
+            } catch (err) {
+              console.error(err);
+              btn.disabled = false;
+              alert(`操作失败：${err}`);
+            }
+          });
+        });
+      }
+
+      load();
+    </script>
+  </body>
+</html>
