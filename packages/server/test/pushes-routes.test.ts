@@ -102,6 +102,56 @@ describe("POST /v1/pushes", () => {
     expect(res.statusCode).toBe(404);
   });
 
+  it("400 path-traversal slug rejected", async () => {
+    const leader = await loginAs(app, db, "first-leader");
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/pushes",
+      headers: { cookie: leader },
+      payload: { skillSlug: "../../../etc/passwd", semver: 1, recipientIds: ["x"], reason: "y" },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: "invalid_body" });
+  });
+
+  it("dedupes duplicate recipientIds (no 500)", async () => {
+    await seedApproved();
+    const leader = await loginAs(app, db, "first-leader");
+    await loginAs(app, db, "alice");
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/pushes",
+      headers: { cookie: leader },
+      payload: {
+        skillSlug: "sql-safety-gate",
+        semver: 1,
+        recipientIds: ["alice", "alice", "alice"],
+        reason: "y",
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = res.json() as { receipts: unknown[] };
+    expect(body.receipts).toHaveLength(1);
+  });
+
+  it("400 cannot push to self", async () => {
+    await seedApproved();
+    const leader = await loginAs(app, db, "first-leader");
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/pushes",
+      headers: { cookie: leader },
+      payload: {
+        skillSlug: "sql-safety-gate",
+        semver: 1,
+        recipientIds: ["first-leader"],
+        reason: "y",
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: "cannot_push_to_self" });
+  });
+
   it("400 unknown recipient", async () => {
     await seedApproved();
     const leader = await loginAs(app, db, "first-leader");

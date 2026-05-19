@@ -1,11 +1,47 @@
 import type { FastifyInstance } from "fastify";
 import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 import { withAuth } from "../auth-guard.js";
 
-/** Render markdown and strip <script> tags (skill markdown is leader-approved). */
+// Allowlist that covers everything a SKILL.md README needs (prose, code,
+// lists, tables, inline anchors, images) and refuses everything else. Leader
+// approval is a trust signal, not a sanitizer — a leader may not notice
+// `<img onerror>` buried in a long markdown body, so we strip it server-side.
+const README_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    "h1","h2","h3","h4","h5","h6",
+    "p","br","hr","blockquote",
+    "ul","ol","li",
+    "strong","em","b","i","u","s","del","ins","mark","sub","sup",
+    "a","img",
+    "code","pre","kbd","samp","var",
+    "table","thead","tbody","tr","th","td",
+    "details","summary",
+    "span","div",
+  ],
+  allowedAttributes: {
+    a: ["href", "title", "name"],
+    img: ["src", "alt", "title", "width", "height"],
+    code: ["class"],
+    pre: ["class"],
+    span: ["class"],
+    div: ["class"],
+    th: ["align", "scope"],
+    td: ["align"],
+  },
+  allowedSchemes: ["http", "https", "mailto"],
+  allowedSchemesAppliedToAttributes: ["href", "src"],
+  // No javascript:, data:, vbscript:, etc.
+  disallowedTagsMode: "discard",
+  enforceHtmlBoundary: true,
+};
+
 function renderReadme(md: string): string {
-  const html = marked.parse(md, { async: false });
-  return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+  const raw = marked.parse(md, { async: false });
+  // marked@15 returns string when async:false. Be defensive in case of
+  // an accidental type shift in a future dep bump.
+  const html = typeof raw === "string" ? raw : String(raw);
+  return sanitizeHtml(html, README_SANITIZE_OPTIONS);
 }
 
 export async function registerSkillRoutes(app: FastifyInstance): Promise<void> {

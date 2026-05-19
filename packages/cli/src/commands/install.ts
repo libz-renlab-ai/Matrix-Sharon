@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { extract as tarExtract } from "tar";
+import { SLUG_PATTERN } from "@matrix-sharon/core";
 import { apiFetch, SKILLS_DIR } from "../config.js";
 
 interface VersionRow {
@@ -34,6 +35,9 @@ export function parseSlugAt(input: string): InstallArgs {
 }
 
 export async function installCommand(args: InstallArgs, log: (s: string) => void = console.log): Promise<void> {
+  if (!SLUG_PATTERN.test(args.slug)) {
+    throw new Error(`invalid slug ${JSON.stringify(args.slug)}: must match ${SLUG_PATTERN}`);
+  }
   let semver = args.semver;
   let expectedSha: string;
 
@@ -66,14 +70,21 @@ export async function installCommand(args: InstallArgs, log: (s: string) => void
   log(`  ✓ sha256 verified (${gotSha.slice(0, 12)}…)`);
 
   const target = join(SKILLS_DIR, args.slug);
+  // Belt-and-braces: after join, ensure target stays under SKILLS_DIR.
+  const rel = relative(SKILLS_DIR, target);
+  if (rel.startsWith("..") || rel.includes("..")) {
+    throw new Error(`refusing path escape from ${SKILLS_DIR}: ${rel}`);
+  }
   await mkdir(target, { recursive: true });
 
   // Write tgz to a temp file, extract, clean up.
+  // tar's strict mode rejects entries with absolute paths or ".." segments —
+  // refuses to write anywhere outside cwd.
   const tmp = mkdtempSync(join(tmpdir(), "sharon-install-"));
   try {
     const tgzPath = join(tmp, "bundle.tgz");
     await writeFile(tgzPath, buf);
-    await tarExtract({ file: tgzPath, cwd: target });
+    await tarExtract({ file: tgzPath, cwd: target, strict: true });
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }

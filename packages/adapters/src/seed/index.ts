@@ -1,4 +1,10 @@
+import { createHash } from "node:crypto";
+import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type Database from "better-sqlite3";
+import { create as tarCreate } from "tar";
+import { FsBundleStore } from "../bundle/fs.js";
 
 const SEED_USER_ID = "system-seed";
 
@@ -71,7 +77,29 @@ const SEEDS: SeedSkill[] = [
  * Inserts a synthetic 'system-seed' user as the author so first-real-login
  * leader bootstrap is not disturbed.
  */
-export async function seedSampleSkills(db: Database.Database): Promise<SeedResult> {
+/** Build a 1-file SKILL.md tgz and return {bytes, sha256}. */
+async function packReadmeAsBundle(slug: string, readme: string): Promise<{ bytes: Buffer; sha256: string }> {
+  const dir = await mkdtemp(join(tmpdir(), `sharon-seed-${slug}-`));
+  try {
+    const filePath = join(dir, "SKILL.md");
+    await writeFile(filePath, readme, "utf8");
+    const archivePath = join(dir, "bundle.tgz");
+    await tarCreate(
+      { file: archivePath, cwd: dir, gzip: true, portable: true },
+      ["SKILL.md"]
+    );
+    const bytes = await readFile(archivePath);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    return { bytes, sha256 };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+export async function seedSampleSkills(
+  db: Database.Database,
+  opts: { bundleStore?: { put(slug: string, versionId: string, bytes: Buffer): Promise<{ sha256: string; size: number }> } | null } = {}
+): Promise<SeedResult> {
   const now = Date.now();
 
   // 1. system-seed user (raw INSERT — does NOT use UserStore.upsertFromGithub).
@@ -88,11 +116,18 @@ export async function seedSampleSkills(db: Database.Database): Promise<SeedResul
   }
 
   // 2. skills + versions.
+  // Pre-build bundles outside the DB transaction (mkdtemp/tar/fs are async).
+  const bundles = new Map<string, { bytes: Buffer; sha256: string }>();
+  for (const s of SEEDS) {
+    bundles.set(s.slug, await packReadmeAsBundle(s.slug, s.readme));
+  }
+
   let skillsInserted = 0;
   let versionsInserted = 0;
   const tx = db.transaction(() => {
     for (const s of SEEDS) {
       const versionId = VERSION_IDS[s.slug];
+      const bundle = bundles.get(s.slug)!;
       const skillExisted = db.prepare("SELECT 1 FROM skills WHERE slug = ?").get(s.slug);
       if (!skillExisted) {
         db.prepare(
@@ -114,8 +149,8 @@ export async function seedSampleSkills(db: Database.Database): Promise<SeedResul
         ).run(
           versionId,
           s.slug,
-          `seed-sha-${s.slug}`,
-          s.readme.length,
+          bundle.sha256,
+          bundle.bytes.length,
           s.description,
           s.pain,
           s.gain,
@@ -133,6 +168,19 @@ export async function seedSampleSkills(db: Database.Database): Promise<SeedResul
     }
   });
   tx();
+
+  // 3. Persist bundle bytes so /v1/skills/:slug/versions/:semver/bundle works.
+  // Pass bundleStore: null to opt out (tests don't need real files on disk).
+  const bundleStore = opts.bundleStore === null
+    ? null
+    : opts.bundleStore ?? new FsBundleStore();
+  if (bundleStore) {
+    for (const s of SEEDS) {
+      const versionId = VERSION_IDS[s.slug];
+      const b = bundles.get(s.slug)!;
+      await bundleStore.put(s.slug, versionId, b.bytes);
+    }
+  }
 
   return { skillsInserted, versionsInserted, userInserted };
 }

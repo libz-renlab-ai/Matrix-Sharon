@@ -3,6 +3,94 @@
 All notable changes to Matrix-Sharon. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] — 2026-05-19
+
+Stabilization release. Three adversarial review passes (leader / investor /
+end-user perspectives) over a freshly-deployed v1 turned up a batch of
+correctness and security holes that all land here. No schema changes, no
+behavior changes for the happy path — only failure-mode and adversarial-input
+handling.
+
+### Security
+- **Stored XSS in rendered README** — `/v1/skills/:slug/versions/:semver/readme`
+  now runs the marked-rendered HTML through `sanitize-html` with an allowlist
+  of tags/attributes/schemes (http/https/mailto only). Previously a regex was
+  stripping `<script>` only, leaving `onerror=` handlers, `javascript:` URLs,
+  `<iframe>`, `<style>`, `<svg onload=…>`, `<base>`, `<meta http-equiv>`, etc.
+  intact. Leader approval is a trust signal, not a sanitizer.
+- **Path traversal via skill slug** — slug validation is now centralized in
+  `@matrix-sharon/core` (`SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/`) and
+  re-applied at every boundary that touches a filesystem path: `FsBundleStore`
+  (refuses path-escape after `relative()` check), `sharon install` CLI (same),
+  push body validator, candidate / submission body validators.
+- **Open redirect on `/login/github?returnTo=…`** — new `sanitizeReturnTo()`
+  that only accepts same-origin path-absolute URLs. Rejects `//evil.com`,
+  `/\\evil.com`, `https://…`, `javascript:…`, control characters,
+  >1024-char payloads. Test matrix covers all known bypass shapes.
+
+### Correctness
+- **Atomic install-token consumption** — `consumeToken` was SELECT-then-UPDATE
+  and racey under concurrent download. Now a single conditional UPDATE
+  (`WHERE consumed_at IS NULL AND expires_at >= ?`); the row is only fetched
+  after `changes === 1`. Double-spend is impossible.
+- **Atomic submission approval** — approval was a multi-statement sequence with
+  no guard against double-approve. Added `transitionFromPending(id, …)`: one
+  conditional UPDATE with `WHERE status = 'pending'`. If the row didn't change,
+  the caller gets `409 already_reviewed`. The downstream bundle persistence is
+  wrapped in try/catch with rollback to `pending` on failure (no orphaned
+  bundles, no torn approval state).
+- **Push recipient dedupe + self-push refused** — `POST /v1/pushes` was 500ing
+  on duplicate `recipientIds` (UNIQUE violation on `push_receipts`). Now
+  dedup'd in-route, and pushing to yourself returns `400 cannot_push_to_self`
+  instead of producing an inbox item for the sender.
+- **Rejected candidate stayed deleted** — rejecting a submission used
+  `candidateStore.delete`; the member couldn't re-submit. Switched to
+  `dismiss` so the candidate row survives with `dismissed_at` set, and the
+  member can edit and re-submit normally.
+
+### Data
+- **Monorepo-anchored data directory** — `resolveDataDir()` now walks up
+  looking for `pnpm-workspace.yaml` and anchors `./data` there. Previously
+  each `cwd` (`packages/server`, `packages/cli`, repo root) spawned its own
+  `sharon.db`, so `sharon-server-seed` populated one DB and the server read
+  another. Single source of truth via `SHARON_DATA_DIR` env still wins.
+- **Seed writes real bundles to disk** — `seedSampleSkills(db, { bundleStore })`
+  now packs each SKILL.md into a portable gzipped tarball at
+  `data/bundles/<slug>/<id>.tgz`. Without this, `/v1/skills/:slug/versions/1/bundle`
+  404'd on every seeded skill, which broke one-click install end-to-end. Tests
+  pass `bundleStore: null` to keep them disk-free.
+- **First-real-login leader bootstrap** — the seed user `system-seed` was
+  counted as the "first leader," so the first real GitHub login became a
+  member with no path to promotion. Bootstrap now ignores `system-seed`.
+- **`via_push_id` no longer overwritten** — re-installing via the regular
+  install flow preserved the `via_push_id` from the push install
+  (`COALESCE(excluded.via_push_id, via_push_id)` in `ON CONFLICT`), so the
+  leader retention dashboard keeps the link to the originating push.
+
+### UX
+- **GitHub rename no longer 500s** — `upsertFromGithub` now keys by stable
+  `github_id` first, falling back to `id`. Renaming a GitHub login used to
+  hit a UNIQUE conflict on `users.id` and crash the auth callback.
+- **Leader queue badge counts correct field** — `Header.astro` was reading
+  `pending` from the API response; the route returns `submissions`. The badge
+  silently never showed; now it lights up correctly when a queue exists.
+- **Consistent invalid_body shape** — invalid bodies across all routes now
+  return `{error:"invalid_body", issues:[…]}` (Zod's flattened array) so the
+  web client can render field-level messages.
+
+### Tests
+- 298 passing + 1 skipped across 38 files (was 251). Notable additions:
+  - `packages/core/test/slug.test.ts` — accept/reject matrix for `SLUG_PATTERN`.
+  - `packages/core/test/return-to.test.ts` — open-redirect bypass shapes.
+  - `packages/server/test/skills-routes.test.ts` — XSS regression covering
+    `<script>`, `onerror=`, `javascript:`, `<iframe>`, `<style>`, `<svg onload>`,
+    `<object>`, `<embed>`, `<form>`, `<base>`, `<link>`, `<meta http-equiv>`,
+    `vbscript:`, `data:` URLs, `<p onmouseover>`. All stripped.
+  - `packages/server/test/submissions-routes.test.ts` — `409 already_reviewed`
+    on second approval.
+
+[1.0.1]: https://github.com/libz-renlab-ai/Matrix-Sharon/releases/tag/v1.0.1
+
 ## [1.0.0] — 2026-05-18
 
 The first release. Single-team self-hosted skills/plugins/workflows marketplace
@@ -34,7 +122,7 @@ install, and leader push with retention signals.
 
 #### Phase 3 — browse
 - `GET /v1/skills` (list), `GET /v1/skills/:slug` (detail with versions),
-  `GET /v1/skills/:slug/readme` (markdown→HTML).
+  `GET /v1/skills/:slug/versions/:semver/readme` (markdown→HTML).
 - `sharon-server-seed` bin: 3 deterministic sample skills + author user.
 - Web `/browse` (skill grid) and `/skills?slug=…` (hero + readme + versions).
 - `withAuth` wrapper for cookie-gated routes.
@@ -66,7 +154,7 @@ install, and leader push with retention signals.
 #### Phase 6 — leader push (closes v1)
 - `POST /v1/pushes` (leader-only): targeted push to recipients with a
   required reason.
-- Recipient inbox: `GET /v1/pushes/inbox`, `POST /v1/pushes/:id/ack`,
+- Recipient inbox: `GET /v1/pushes/inbox`, `POST /v1/pushes/:id/acknowledge`,
   `…/receipts/done`, `…/receipts/failed`.
 - Leader retention view: `GET /v1/pushes/sent` (counts by status).
 - `sharon receive` CLI: polls inbox, dispatches via PUSH_KINDS handlers

@@ -2,10 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ulid } from "ulid";
 import type { PushReceiptStatus } from "@matrix-sharon/types";
+import { SLUG_PATTERN } from "@matrix-sharon/core";
 import { withAuth, withLeader } from "../auth-guard.js";
 
 const CreatePushBody = z.object({
-  skillSlug: z.string().min(1),
+  skillSlug: z.string().regex(SLUG_PATTERN, "invalid skill slug"),
   semver: z.number().int().positive(),
   recipientIds: z.array(z.string().min(1)).min(1),
   reason: z.string().min(1),
@@ -21,13 +22,23 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
       if (!parsed.success) {
         return reply.code(400).send({ error: "invalid_body", issues: parsed.error.issues });
       }
+      // Dedupe recipientIds — push_receipts has a unique (push_id, recipient_id)
+      // constraint, so a payload like {"recipientIds":["alice","alice"]} would
+      // otherwise crash the receipts insert and leave an orphan push row.
+      const recipientIds = [...new Set(parsed.data.recipientIds)];
+      // Refuse self-push — a leader pushing to themselves is meaningless and
+      // litters their own inbox.
+      if (recipientIds.includes(leader.id)) {
+        return reply.code(400).send({ error: "cannot_push_to_self" });
+      }
+
       // Resolve version by slug+semver
       const versions = await app.ctx.skillStore.listVersionsBySlug(parsed.data.skillSlug);
       const version = versions.find((v) => v.semver === parsed.data.semver);
       if (!version) return reply.code(404).send({ error: "version_not_found" });
 
       // Validate recipients exist
-      for (const id of parsed.data.recipientIds) {
+      for (const id of recipientIds) {
         const u = await app.ctx.userStore.findById(id);
         if (!u) return reply.code(400).send({ error: "unknown_recipient", recipientId: id });
       }
@@ -44,7 +55,7 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
         pushedAt: now,
       };
       await app.ctx.pushStore.insertPush(push);
-      const receipts = parsed.data.recipientIds.map((rid) => ({
+      const receipts = recipientIds.map((rid) => ({
         pushId,
         recipientId: rid,
         status: "pending" as const,
@@ -58,7 +69,7 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
         action: "push",
         targetKind: "push",
         targetId: pushId,
-        payload: { skillSlug: parsed.data.skillSlug, semver: parsed.data.semver, recipients: parsed.data.recipientIds },
+        payload: { skillSlug: parsed.data.skillSlug, semver: parsed.data.semver, recipients: recipientIds },
         at: now,
       });
       return reply.code(201).send({ push, receipts });
@@ -119,7 +130,7 @@ export async function registerPushRoutes(app: FastifyInstance): Promise<void> {
     withAuth(async (req, reply, _session, user) => {
       const { pushId } = req.params as { pushId: string };
       const parsed = FailBody.safeParse(req.body);
-      if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+      if (!parsed.success) return reply.code(400).send({ error: "invalid_body", issues: parsed.error.issues });
       const receipts = await app.ctx.pushStore.listReceiptsForPush(pushId);
       const mine = receipts.find((r) => r.recipientId === user.id);
       if (!mine) return reply.code(403).send({ error: "not_a_recipient" });

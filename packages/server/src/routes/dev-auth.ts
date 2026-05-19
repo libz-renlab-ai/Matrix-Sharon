@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
-import { createSession } from "@matrix-sharon/core";
+import { createSession, sanitizeReturnTo } from "@matrix-sharon/core";
 import { setSessionCookie } from "../session-cookie.js";
 
 // Dev-only zero-config login. Bypasses GitHub OAuth so local trials don't
@@ -24,7 +24,7 @@ export async function registerDevAuthRoutes(app: FastifyInstance): Promise<void>
           hint: "Use 1-39 chars, only letters/digits/_/- (GitHub-style).",
         });
       }
-      const returnTo = req.query.returnTo ?? "/";
+      const returnTo = sanitizeReturnTo(req.query.returnTo);
 
       // Deterministic fake github_id from the username so re-logging in as the
       // same name reuses the same user row.

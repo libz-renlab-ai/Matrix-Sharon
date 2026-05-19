@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe("seedSampleSkills", () => {
   it("inserts 3 skills, 3 versions, 1 system-seed user", async () => {
-    const r = await seedSampleSkills(db);
+    const r = await seedSampleSkills(db, { bundleStore: null });
     expect(r.skillsInserted).toBe(3);
     expect(r.versionsInserted).toBe(3);
     expect(r.userInserted).toBe(true);

@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ulid } from "ulid";
+import { SLUG_PATTERN } from "@matrix-sharon/core";
 import { withAuth } from "../auth-guard.js";
 
 const CreateCandidateBody = z.object({
-  skillSlug: z.string().min(1),
+  skillSlug: z.string().regex(SLUG_PATTERN, "invalid skill slug"),
   fullContentMd: z.string().min(1),
   diffUnified: z.string().nullable().optional(),
   reason: z.string().min(1),

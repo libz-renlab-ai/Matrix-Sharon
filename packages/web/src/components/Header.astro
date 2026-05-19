@@ -118,10 +118,10 @@ const { active } = Astro.props as { active?: string };
     try {
       const r = await fetch("/v1/submissions/pending", { credentials: "same-origin" });
       if (!r.ok) return;
-      const { items } = (await r.json()) as { items: unknown[] };
-      if (items.length === 0) { badge.hidden = true; return; }
+      const { submissions } = (await r.json()) as { submissions: unknown[] };
+      if (!Array.isArray(submissions) || submissions.length === 0) { badge.hidden = true; return; }
       badge.hidden = false;
-      badge.textContent = String(items.length);
+      badge.textContent = String(submissions.length);
     } catch { /* ignore */ }
   }
 

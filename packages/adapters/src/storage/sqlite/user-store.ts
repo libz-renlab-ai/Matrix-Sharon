@@ -40,21 +40,35 @@ export class SqliteUserStore implements UserStore {
     const now = Date.now();
     // First-user-is-leader bootstrap + role-preserving upsert must be atomic.
     const tx = this.db.transaction(() => {
-      const existing = this.db
+      // Prefer github_id (stable across rename) over login name. If the user
+      // renamed their GitHub login, the row still exists under the same
+      // github_id — we keep the original `users.id` (it's the FK target of
+      // skills/installs/pushes/etc.) but refresh the human-readable fields.
+      const existing = (this.db
+        .prepare("SELECT * FROM users WHERE github_id = ?")
+        .get(input.githubId) as Row | undefined) ?? (this.db
         .prepare("SELECT * FROM users WHERE id = ?")
-        .get(input.id) as Row | undefined;
+        .get(input.id) as Row | undefined);
 
       if (existing) {
+        // Don't touch users.id — it's referenced by other tables. Refresh
+        // mutable profile fields only. If the GitHub login changed, the
+        // display name updates but the internal id stays stable.
         this.db
           .prepare(
             `UPDATE users
              SET github_id = ?, name = ?, email = ?, avatar_url = ?, last_seen_at = ?
              WHERE id = ?`
           )
-          .run(input.githubId, input.name, input.email, input.avatarUrl, now, input.id);
+          .run(input.githubId, input.name, input.email, input.avatarUrl, now, existing.id);
       } else {
-        const totalRow = this.db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number };
-        const role: Role = totalRow.n === 0 ? "leader" : input.defaultRoleIfNew;
+        // First *real* login becomes leader. Count leaders, not all users, so
+        // the synthetic 'system-seed' user inserted by `pnpm seed` (a member
+        // record used as skill author) does not block the bootstrap.
+        const leaderRow = this.db
+          .prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'leader'")
+          .get() as { n: number };
+        const role: Role = leaderRow.n === 0 ? "leader" : input.defaultRoleIfNew;
         this.db
           .prepare(
             `INSERT INTO users (id, github_id, name, email, avatar_url, role, created_at, last_seen_at)
@@ -71,7 +85,9 @@ export class SqliteUserStore implements UserStore {
             now
           );
       }
-      return this.db.prepare("SELECT * FROM users WHERE id = ?").get(input.id) as Row;
+      // Return by github_id so rename callers get the row keyed by the
+      // stable internal id, not the (possibly-new) login they passed in.
+      return this.db.prepare("SELECT * FROM users WHERE github_id = ?").get(input.githubId) as Row;
     });
 
     return rowToUser(tx());

@@ -66,6 +66,25 @@ describe("POST /v1/submissions", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it.each([
+    "../../../etc/passwd",
+    "/absolute",
+    "with space",
+    "Foo-Bar",
+    "",
+    "x".repeat(100),
+  ])("400 when skillSlug is %s", async (badSlug) => {
+    const cookie = await loginAs(app, db, "octocat");
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/submissions",
+      headers: { cookie },
+      payload: { skillSlug: badSlug, rawSkillMd: validSkillMd },
+    });
+    expect(res.statusCode).toBe(400);
+    expect((res.json() as { error: string }).error).toBe("invalid_body");
+  });
+
   it("400 when rawSkillMd has malformed frontmatter", async () => {
     const cookie = await loginAs(app, db, "octocat");
     const res = await app.inject({
@@ -252,7 +271,7 @@ describe("POST /v1/submissions/:id/approve", () => {
     expect(lb.skills.some((r) => r.skill.slug === "sql-safety-gate")).toBe(true);
   });
 
-  it("400 when approve is called again on already-approved submission", async () => {
+  it("409 when approve is called again on already-approved submission", async () => {
     const { leaderCookie, submissionId } = await setupPendingSubmission();
     await app.inject({
       method: "POST",
@@ -266,7 +285,8 @@ describe("POST /v1/submissions/:id/approve", () => {
       headers: { cookie: leaderCookie },
       payload: {},
     });
-    expect(second.statusCode).toBe(400);
+    expect(second.statusCode).toBe(409);
+    expect(second.json()).toMatchObject({ error: "already_reviewed" });
   });
 });
 

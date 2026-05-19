@@ -5,6 +5,7 @@ import {
   decodeState,
   encodeState,
   generateState,
+  sanitizeReturnTo,
   statesMatch,
 } from "@matrix-sharon/core";
 import { InvalidOauthCodeError } from "@matrix-sharon/ports";
@@ -25,7 +26,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
     const state = generateState(
       () => randomBytes(16).toString("hex"),
-      req.query.returnTo ?? "/"
+      sanitizeReturnTo(req.query.returnTo)
     );
     const encoded = encodeState(state);
     reply.setCookie(STATE_COOKIE, encoded, {
@@ -101,7 +102,9 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       secure: ctx.config.publicBaseUrl.startsWith("https://"),
     });
     reply.clearCookie(STATE_COOKIE, { path: "/" });
-    return reply.redirect(state.returnTo);
+    // Sanitize again on the way out — defense in depth in case the state
+    // cookie payload was crafted to bypass the input check.
+    return reply.redirect(sanitizeReturnTo(state.returnTo));
   });
 
   app.post("/auth/logout", async (_req, reply) => {

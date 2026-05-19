@@ -151,9 +151,8 @@ describe("GET /v1/skills/:slug/versions/:semver/readme", () => {
     expect(res.statusCode).toBe(404);
   });
 
-  it("strips <script> tags from rendered HTML", async () => {
+  it("strips dangerous HTML across many XSS vectors", async () => {
     await seedSampleSkills(db);
-    // Insert a version with malicious markdown into a new skill
     const ss = new SqliteSkillStore(db);
     await ss.upsertSkill({
       slug: "xss-test",
@@ -164,6 +163,29 @@ describe("GET /v1/skills/:slug/versions/:semver/readme", () => {
       createdAt: Date.now(),
       currentVersionId: null,
     });
+    // Multiple XSS vectors a malicious author could embed in SKILL.md.
+    // Leaders may approve without spotting these; sanitizer is the real defense.
+    const malicious = [
+      "# Hello",
+      "",
+      "<script>alert('xss-script')</script>",
+      "<img src=x onerror=\"alert('xss-onerror')\">",
+      "<a href=\"javascript:alert('xss-js-url')\">click</a>",
+      "<iframe src=\"https://evil.example/\"></iframe>",
+      "<style>body{display:none}</style>",
+      "<svg onload=\"alert('xss-svg')\"></svg>",
+      "<object data=\"https://evil.example/\"></object>",
+      "<embed src=\"https://evil.example/\">",
+      "<form action=\"https://evil.example/\"><input name=x></form>",
+      "<base href=\"https://evil.example/\">",
+      "<link rel=\"stylesheet\" href=\"https://evil.example/x.css\">",
+      "<meta http-equiv=\"refresh\" content=\"0;url=https://evil.example/\">",
+      "<a href=\"vbscript:msgbox('xss-vbscript')\">vb</a>",
+      "<a href=\"data:text/html,<script>alert(1)</script>\">data</a>",
+      "<p onmouseover=\"alert('xss-mouseover')\">hover</p>",
+      "",
+      "marker-safe-text-PRESERVED",
+    ].join("\n");
     await ss.insertVersion({
       id: "01JABCXSSTESTVERSIONAAAAAAAA",
       skillSlug: "xss-test",
@@ -175,7 +197,7 @@ describe("GET /v1/skills/:slug/versions/:semver/readme", () => {
       gain: null,
       triggers: null,
       exampleJson: null,
-      readmeMd: "# Hello\n\n<script>alert('xss')</script>\n\nsafe text",
+      readmeMd: malicious,
       note: null,
       publishedBy: "system-seed",
       approvedBy: "system-seed",
@@ -190,8 +212,25 @@ describe("GET /v1/skills/:slug/versions/:semver/readme", () => {
     });
     expect(res.statusCode).toBe(200);
     const body = res.json() as { html: string };
-    expect(body.html).not.toContain("<script");
-    expect(body.html).not.toContain("alert(");
-    expect(body.html).toContain("safe text");
+    const html = body.html;
+    // No executable / dangerous elements survive.
+    expect(html).not.toMatch(/<script/i);
+    expect(html).not.toMatch(/<iframe/i);
+    expect(html).not.toMatch(/<object/i);
+    expect(html).not.toMatch(/<embed/i);
+    expect(html).not.toMatch(/<style/i);
+    expect(html).not.toMatch(/<svg/i);
+    expect(html).not.toMatch(/<form/i);
+    expect(html).not.toMatch(/<base/i);
+    expect(html).not.toMatch(/<link/i);
+    expect(html).not.toMatch(/<meta/i);
+    // No inline event handlers (catches onerror, onload, onmouseover, …).
+    expect(html).not.toMatch(/\son[a-z]+\s*=/i);
+    // No javascript:/vbscript:/data: URLs surfacing in href/src.
+    expect(html).not.toMatch(/javascript:/i);
+    expect(html).not.toMatch(/vbscript:/i);
+    expect(html).not.toMatch(/href\s*=\s*['"]?data:/i);
+    // Benign content still passes through.
+    expect(html).toContain("marker-safe-text-PRESERVED");
   });
 });

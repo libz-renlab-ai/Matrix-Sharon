@@ -103,4 +103,28 @@ export class SqliteSubmissionStore implements SubmissionStore {
       )
       .run(params.status, params.reviewerId, params.reviewedAt, params.rejectReason, id);
   }
+
+  // Conditional transition: only flips the row if it's still 'pending'. Returns
+  // true when this caller won the race (changes === 1), false when someone
+  // else already reviewed it. Use this before any side-effects (version
+  // insert, bundle write) to make approval/rejection idempotent under a
+  // double-click or concurrent leader sessions.
+  async transitionFromPending(
+    id: string,
+    params: {
+      status: Exclude<SubmissionStatus, "pending">;
+      reviewerId: string;
+      reviewedAt: number;
+      rejectReason: string | null;
+    }
+  ): Promise<boolean> {
+    const result = this.db
+      .prepare(
+        `UPDATE pending_submissions
+         SET status = ?, reviewer_id = ?, reviewed_at = ?, reject_reason = ?
+         WHERE id = ? AND status = 'pending'`
+      )
+      .run(params.status, params.reviewerId, params.reviewedAt, params.rejectReason, id);
+    return result.changes === 1;
+  }
 }

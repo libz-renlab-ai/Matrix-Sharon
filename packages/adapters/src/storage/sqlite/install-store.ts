@@ -46,6 +46,9 @@ export class SqliteInstallStore implements InstallStore {
   constructor(private readonly db: Database.Database) {}
 
   async recordInstall(install: Install): Promise<void> {
+    // COALESCE on via_push_id preserves the push linkage when a user
+    // re-installs directly (POST /v1/installs without a push token) after
+    // having received via push. This keeps leader retention numbers accurate.
     this.db
       .prepare(
         `INSERT INTO installs
@@ -55,7 +58,7 @@ export class SqliteInstallStore implements InstallStore {
            skill_version_id = excluded.skill_version_id,
            installed_at = excluded.installed_at,
            uninstalled_at = NULL,
-           via_push_id = excluded.via_push_id`
+           via_push_id = COALESCE(excluded.via_push_id, via_push_id)`
       )
       .run(
         install.userId,
@@ -102,15 +105,20 @@ export class SqliteInstallStore implements InstallStore {
   }
 
   async consumeToken(token: string, at: number): Promise<InstallToken | null> {
-    const row = this.db.prepare("SELECT * FROM install_tokens WHERE token = ?").get(token) as
-      | TokenRow
-      | undefined;
+    // Atomic check-and-consume: the UPDATE itself enforces single-use and
+    // un-expired. If two concurrent requests both observe consumed_at IS NULL
+    // and race the UPDATE, only one wins (changes === 1); the other gets 0
+    // changes and we return null as if the token were already consumed.
+    const result = this.db
+      .prepare(
+        "UPDATE install_tokens SET consumed_at = ? WHERE token = ? AND consumed_at IS NULL AND expires_at >= ?"
+      )
+      .run(at, token, at);
+    if (result.changes === 0) return null;
+    const row = this.db
+      .prepare("SELECT * FROM install_tokens WHERE token = ?")
+      .get(token) as TokenRow | undefined;
     if (!row) return null;
-    if (row.consumed_at !== null) return null;
-    if (row.expires_at < at) return null;
-    this.db
-      .prepare("UPDATE install_tokens SET consumed_at = ? WHERE token = ?")
-      .run(at, token);
-    return rowToToken({ ...row, consumed_at: at });
+    return rowToToken(row);
   }
 }

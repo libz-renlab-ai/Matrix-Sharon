@@ -11,6 +11,7 @@ import {
   parseFrontmatter,
   planApproval,
   planRejection,
+  SLUG_PATTERN,
 } from "@matrix-sharon/core";
 import type { PendingSubmission, SkillVersion } from "@matrix-sharon/types";
 import { withAuth, withLeader } from "../auth-guard.js";
@@ -19,7 +20,7 @@ const SubmitFromCandidate = z.object({
   candidateId: z.string().min(1),
 });
 const SubmitDirect = z.object({
-  skillSlug: z.string().min(1),
+  skillSlug: z.string().regex(SLUG_PATTERN, "invalid skill slug"),
   rawSkillMd: z.string().min(1),
 });
 const SubmitBody = z.union([SubmitFromCandidate, SubmitDirect]);
@@ -106,7 +107,11 @@ export async function registerSubmissionRoutes(app: FastifyInstance): Promise<vo
     await app.ctx.submissionStore.insert(submission);
 
     if (candidateIdToDelete) {
-      await app.ctx.candidateStore.delete(candidateIdToDelete);
+      // Dismiss instead of delete — keeps the candidate row around so that
+      // if the leader rejects the submission, the user can recover their
+      // content via /v1/submissions/mine (status: rejected) or future
+      // "resubmit" affordances.
+      await app.ctx.candidateStore.dismiss(candidateIdToDelete);
     }
 
     return reply.code(201).send({ submission });
@@ -129,11 +134,14 @@ export async function registerSubmissionRoutes(app: FastifyInstance): Promise<vo
       const { id } = req.params as { id: string };
       const bodyParsed = ApproveBody.safeParse(req.body ?? {});
       if (!bodyParsed.success) {
-        return reply.code(400).send({ error: "invalid_body" });
+        return reply.code(400).send({ error: "invalid_body", issues: bodyParsed.error.issues });
       }
 
       const submission = await app.ctx.submissionStore.find(id);
       if (!submission) return reply.code(404).send({ error: "submission_not_found" });
+      if (submission.status !== "pending") {
+        return reply.code(409).send({ error: "already_reviewed", status: submission.status });
+      }
 
       let plan;
       try {
@@ -156,11 +164,32 @@ export async function registerSubmissionRoutes(app: FastifyInstance): Promise<vo
         if (bodyParsed.data.note !== undefined) approveInput.note = bodyParsed.data.note;
         plan = planApproval(approveInput);
 
-        // Imperative shell: persist atomically.
-        const versionToInsert = plan.versionToInsert;
-        await persistApproval(app, submission, versionToInsert, bundleBytes, plan);
-
-        return reply.code(200).send({ version: versionToInsert });
+        // Conditional pre-transition: only one approver wins. If we lose
+        // (double-click, concurrent approve), skip all side-effects.
+        const won = await app.ctx.submissionStore.transitionFromPending(submission.id, plan.statusChange);
+        if (!won) {
+          return reply.code(409).send({ error: "already_reviewed" });
+        }
+        try {
+          const versionToInsert = plan.versionToInsert;
+          await persistApproval(app, submission, versionToInsert, bundleBytes, plan);
+          return reply.code(200).send({ version: versionToInsert });
+        } catch (innerErr) {
+          // Side-effect failed after we claimed the status flip. Best-effort
+          // rollback: put the submission back into 'pending' via raw SQL so
+          // the leader can retry. The version row (if inserted) and bundle
+          // file (if written) are left behind — they're addressable by ULID
+          // and harmless; the next retry will pick a fresh ULID.
+          req.log.error({ err: innerErr }, "approval side-effects failed; rolling back to pending");
+          try {
+            app.ctx.db
+              .prepare(
+                "UPDATE pending_submissions SET status = 'pending', reviewer_id = NULL, reviewed_at = NULL, reject_reason = NULL WHERE id = ?"
+              )
+              .run(submission.id);
+          } catch {/* nothing actionable */}
+          throw innerErr;
+        }
       } catch (err) {
         if (err instanceof ApprovalPlanError) {
           return reply.code(400).send({ error: "approval_invalid", detail: err.message });
@@ -177,10 +206,13 @@ export async function registerSubmissionRoutes(app: FastifyInstance): Promise<vo
       const { id } = req.params as { id: string };
       const bodyParsed = RejectBody.safeParse(req.body);
       if (!bodyParsed.success) {
-        return reply.code(400).send({ error: "invalid_body" });
+        return reply.code(400).send({ error: "invalid_body", issues: bodyParsed.error.issues });
       }
       const submission = await app.ctx.submissionStore.find(id);
       if (!submission) return reply.code(404).send({ error: "submission_not_found" });
+      if (submission.status !== "pending") {
+        return reply.code(409).send({ error: "already_reviewed", status: submission.status });
+      }
 
       try {
         const plan = planRejection({
@@ -189,7 +221,10 @@ export async function registerSubmissionRoutes(app: FastifyInstance): Promise<vo
           nowMs: Date.now(),
           reason: bodyParsed.data.reason,
         });
-        await app.ctx.submissionStore.setStatus(submission.id, plan.statusChange);
+        const won = await app.ctx.submissionStore.transitionFromPending(submission.id, plan.statusChange);
+        if (!won) {
+          return reply.code(409).send({ error: "already_reviewed" });
+        }
         await app.ctx.auditLog.record(plan.auditEntry);
         return reply.code(200).send({ ok: true });
       } catch (err) {
@@ -230,8 +265,8 @@ async function persistApproval(
   }
   // 4. Point the skill at the new version
   await app.ctx.skillStore.setCurrentVersion(submission.skillSlug, versionToInsert.id);
-  // 5. Update submission status
-  await app.ctx.submissionStore.setStatus(submission.id, plan.statusChange);
-  // 6. Audit
+  // Note: submission status was already flipped atomically by the caller
+  // (transitionFromPending). Don't write it again here.
+  // 5. Audit
   await app.ctx.auditLog.record(plan.auditEntry);
 }

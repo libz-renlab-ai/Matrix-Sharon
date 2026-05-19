@@ -11,3 +11,5 @@ export * from "./session.js";
 export * from "./frontmatter.js";
 export * from "./semver-alloc.js";
 export * from "./approval.js";
+export * from "./slug.js";
+export * from "./return-to.js";

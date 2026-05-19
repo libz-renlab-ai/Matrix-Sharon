@@ -1,17 +1,18 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
+import { SLUG_PATTERN } from "@matrix-sharon/core";
 import { withAuth } from "../auth-guard.js";
 
 const INSTALL_TOKEN_TTL_MS = 5 * 60 * 1000;
 
 const InstallIntentBody = z.object({
-  skillSlug: z.string().min(1),
+  skillSlug: z.string().regex(SLUG_PATTERN, "invalid skill slug"),
   semver: z.number().int().positive(),
 });
 
 const InstallBody = z.object({
-  skillSlug: z.string().min(1),
+  skillSlug: z.string().regex(SLUG_PATTERN, "invalid skill slug"),
   semver: z.number().int().positive(),
 });
 
@@ -67,7 +68,7 @@ export async function registerInstallRoutes(app: FastifyInstance): Promise<void>
     withAuth(async (req, reply, _session, user) => {
       const parsed = InstallIntentBody.safeParse(req.body);
       if (!parsed.success) {
-        return reply.code(400).send({ error: "invalid_body" });
+        return reply.code(400).send({ error: "invalid_body", issues: parsed.error.issues });
       }
       const version = await findVersion(app, parsed.data.skillSlug, parsed.data.semver);
       if (!version) return reply.code(404).send({ error: "version_not_found" });
@@ -175,7 +176,7 @@ export async function registerInstallRoutes(app: FastifyInstance): Promise<void>
     withAuth(async (req, reply, _session, user) => {
       const parsed = InstallBody.safeParse(req.body);
       if (!parsed.success) {
-        return reply.code(400).send({ error: "invalid_body" });
+        return reply.code(400).send({ error: "invalid_body", issues: parsed.error.issues });
       }
       const version = await findVersion(app, parsed.data.skillSlug, parsed.data.semver);
       if (!version) return reply.code(404).send({ error: "version_not_found" });
