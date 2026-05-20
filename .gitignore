@@ -23,3 +23,6 @@ dist/
 # Phase 1 additions
 data/
 .turbo/
+
+# Vercel CLI local project link (team/project IDs — each dev re-links)
+.vercel/

@@ -64,6 +64,14 @@ docker compose up -d
 
 ## 先看原型
 
+**🌐 在线 Demo（Vercel 部署）**：<https://showcase-deploy-pi.vercel.app>
+
+- `/` —— Pitch 页（给 VC / 团队 lead 看的精简密集版）
+- `/Matrix-Sharon-Showcase.html` —— 深度演示页（功能逐节展开）
+- `/prototype/index.html` —— 仓库原型本体（嵌在 showcase 里也能跑）
+
+**本地看原型**：
+
 ```
 # Windows
 start prototype/index.html
@@ -73,6 +81,23 @@ open prototype/index.html
 ```
 
 详见 [prototype/README.md](./prototype/README.md)。
+
+### 重新部署 showcase
+
+```bash
+cd showcase-deploy
+vercel --prod      # 需要先 npm i -g vercel && vercel login
+```
+
+`showcase-deploy/` 是从 `.design-handoff/project/` 同步过来的可部署目录（HTML + JSX + CSS + prototype/）。设计稿迭代时把新 bundle 解压覆盖再 `vercel --prod` 即可。
+
+## 团队 git hooks（可选）
+
+`.githooks/` 里有 `pre-commit` 和 `post-merge` 两个钩子（联动 TeamAgent CLI 的规则同步，未安装 CLI 时只是警告不阻塞）。新成员 clone 后启用：
+
+```bash
+git config core.hooksPath .githooks
+```
 
 ## v1 范围（已对齐的决策）
 
